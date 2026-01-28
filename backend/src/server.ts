@@ -1,7 +1,9 @@
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 
+import analysisRouter from './routes/analysis';
 import healthRouter from './routes/health';
+import portfoliosRouter from './routes/portfolios';
 
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
@@ -15,11 +17,20 @@ app.get('/', (_request, response) => {
     message: 'Portfolio analytics API is running.',
     docs: {
       health: '/api/health',
+      portfolios: '/api/portfolios',
+      analyses: [
+        '/api/analysis/backtest',
+        '/api/analysis/factors',
+        '/api/analysis/efficient-frontier',
+        '/api/analysis/optimize',
+      ],
     },
   });
 });
 
 app.use('/api/health', healthRouter);
+app.use('/api/portfolios', portfoliosRouter);
+app.use('/api/analysis', analysisRouter);
 
 app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
   const message = error instanceof Error ? error.message : 'Unexpected server error';

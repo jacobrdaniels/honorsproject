@@ -11,6 +11,11 @@ const healthError = ref('');
 
 const navigation = [
   { to: '/', label: 'Dashboard' },
+  { to: '/backtest', label: 'Backtest' },
+  { to: '/factor-regression', label: 'Factor Regression' },
+  { to: '/efficient-frontier', label: 'Efficient Frontier' },
+  { to: '/optimization', label: 'Optimization' },
+  { to: '/saved-portfolios', label: 'Saved Portfolios' },
 ] as const;
 
 const activePath = computed(() => route.path);
