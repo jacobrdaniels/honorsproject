@@ -47,6 +47,9 @@ onMounted(async () => {
         <p class="status-copy">
           {{ health?.service ?? (healthError || 'Health endpoint has not responded yet.') }}
         </p>
+        <p v-if="health" class="status-copy">
+          Database: {{ health.database.status }} | Checked: {{ new Date(health.checkedAt).toLocaleTimeString() }}
+        </p>
       </div>
     </header>
 
