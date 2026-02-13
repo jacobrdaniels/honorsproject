@@ -1,8 +1,11 @@
-import { randomUUID } from 'crypto';
-import { promises as fsPromises } from 'fs';
-import path from 'path';
-
 import type { AssetAllocation, SavedPortfolio } from '../types';
+import {
+  createPortfolioRecord,
+  deletePortfolioRecord,
+  getPortfolioRecordById,
+  listPortfolioRecords,
+  updatePortfolioRecord,
+} from '../db/portfolioRepository';
 import { parseAllocationString } from './portfolioInput';
 
 type PortfolioMutationInput = {
@@ -11,8 +14,6 @@ type PortfolioMutationInput = {
   notes?: string;
   allocations: string;
 };
-
-const dataFilePath = path.resolve(__dirname, '../../data/portfolios.json');
 
 function normalizePortfolioInput(input: PortfolioMutationInput): {
   name: string;
@@ -34,75 +35,22 @@ function normalizePortfolioInput(input: PortfolioMutationInput): {
   };
 }
 
-async function ensureDataFile(): Promise<void> {
-  await fsPromises.mkdir(path.dirname(dataFilePath), { recursive: true });
-
-  try {
-    await fsPromises.access(dataFilePath);
-  } catch {
-    await fsPromises.writeFile(dataFilePath, '[]\n', 'utf8');
-  }
-}
-
-async function readPortfolios(): Promise<SavedPortfolio[]> {
-  await ensureDataFile();
-  const raw = await fsPromises.readFile(dataFilePath, 'utf8');
-  return raw.trim() ? JSON.parse(raw) as SavedPortfolio[] : [];
-}
-
-async function writePortfolios(portfolios: SavedPortfolio[]): Promise<void> {
-  await fsPromises.writeFile(dataFilePath, JSON.stringify(portfolios, null, 2) + '\n', 'utf8');
-}
-
 export async function listPortfolios(): Promise<SavedPortfolio[]> {
-  return readPortfolios();
+  return listPortfolioRecords();
 }
 
 export async function getPortfolioById(id: string): Promise<SavedPortfolio | null> {
-  const portfolios = await readPortfolios();
-  return portfolios.find((portfolio) => portfolio.id === id) ?? null;
+  return getPortfolioRecordById(id);
 }
 
 export async function createPortfolio(input: PortfolioMutationInput): Promise<SavedPortfolio> {
-  const portfolio: SavedPortfolio = {
-    id: randomUUID(),
-    ...normalizePortfolioInput(input),
-  };
-
-  const portfolios = await readPortfolios();
-  portfolios.unshift(portfolio);
-  await writePortfolios(portfolios);
-
-  return portfolio;
+  return createPortfolioRecord(normalizePortfolioInput(input));
 }
 
 export async function updatePortfolio(id: string, input: PortfolioMutationInput): Promise<SavedPortfolio | null> {
-  const portfolios = await readPortfolios();
-  const index = portfolios.findIndex((portfolio) => portfolio.id === id);
-
-  if (index === -1) {
-    return null;
-  }
-
-  const updated: SavedPortfolio = {
-    ...portfolios[index],
-    ...normalizePortfolioInput(input),
-  };
-
-  portfolios[index] = updated;
-  await writePortfolios(portfolios);
-
-  return updated;
+  return updatePortfolioRecord(id, normalizePortfolioInput(input));
 }
 
 export async function deletePortfolio(id: string): Promise<boolean> {
-  const portfolios = await readPortfolios();
-  const filtered = portfolios.filter((portfolio) => portfolio.id !== id);
-
-  if (filtered.length === portfolios.length) {
-    return false;
-  }
-
-  await writePortfolios(filtered);
-  return true;
+  return deletePortfolioRecord(id);
 }

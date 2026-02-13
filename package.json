@@ -2,6 +2,9 @@
   "name": "honorsproject",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "frontend",
     "backend"
@@ -10,9 +13,16 @@
     "dev": "concurrently \"npm run dev --workspace frontend\" \"npm run dev --workspace backend\"",
     "dev:frontend": "npm run dev --workspace frontend",
     "dev:backend": "npm run dev --workspace backend",
-    "build": "npm run build --workspace frontend && npm run build --workspace backend"
+    "build": "npm run build --workspace frontend && npm run build --workspace backend",
+    "lint": "eslint .",
+    "test": "npm run test --workspace backend"
   },
   "devDependencies": {
-    "concurrently": "9.2.1"
+    "@eslint/js": "9.39.2",
+    "concurrently": "9.2.1",
+    "eslint": "9.39.2",
+    "eslint-plugin-vue": "10.7.0",
+    "globals": "17.1.0",
+    "typescript-eslint": "8.53.1"
   }
 }
