@@ -12,6 +12,7 @@ import {
   buildFactorResponse,
   buildOptimizationResponse,
 } from '../lib/analysisScenarios';
+import { buildBacktestResponseFromMarketData } from '../lib/marketDataBacktest';
 
 const analysisRouter = Router();
 
@@ -24,7 +25,8 @@ analysisRouter.post('/backtest', async (request, response, next) => {
   };
 
   try {
-    const payload: BacktestResponse = buildBacktestResponse(backtestInput);
+    const payload: BacktestResponse = await buildBacktestResponseFromMarketData(backtestInput)
+      ?? buildBacktestResponse(backtestInput);
 
     response.json(payload);
   } catch (error) {
