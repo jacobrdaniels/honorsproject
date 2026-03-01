@@ -1,46 +1,42 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 
 import { postJson } from '../lib/api';
-import { createUniverseText, parseUniverseText } from '../lib/portfolio';
-import { getPortfolioIdFromQuery, getSavedPortfolio } from '../lib/savedPortfolio';
-import type { EfficientFrontierResponse } from '../types';
+import { createUniverseText } from '../lib/portfolio';
+import { listSavedPortfolios, resolveSelectedPortfolioId } from '../lib/savedPortfolio';
+import type { EfficientFrontierResponse, SavedPortfolio } from '../types';
 
 const route = useRoute();
-const universe = ref('VTI:0.08:0.16, VXUS:0.07:0.18, BND:0.04:0.06');
-const selectedPortfolioName = ref('');
+const portfolios = ref<SavedPortfolio[]>([]);
+const selectedPortfolioId = ref('');
 const result = ref<EfficientFrontierResponse | null>(null);
 const error = ref('');
 const loading = ref(false);
 
-const parsedUniverse = computed(() => parseUniverseText(universe.value));
+const selectedPortfolio = computed(() =>
+  portfolios.value.find((portfolio) => portfolio.id === selectedPortfolioId.value) ?? null,
+);
 const formError = computed(() =>
-  parsedUniverse.value.length < 2 ? 'Enter at least two assets in the format TICKER:RETURN:VOL.' : ''
+  selectedPortfolio.value && selectedPortfolio.value.assets.length >= 2
+    ? ''
+    : 'Select a premade portfolio with at least two holdings.',
 );
 
-async function syncSavedPortfolio() {
-  const portfolioId = getPortfolioIdFromQuery(route.query);
-
-  if (!portfolioId) {
-    selectedPortfolioName.value = '';
-    return;
-  }
-
+async function loadPortfolios() {
   try {
-    const portfolio = await getSavedPortfolio(`/api/portfolios/${portfolioId}`);
-    selectedPortfolioName.value = portfolio.name;
-    universe.value = createUniverseText(portfolio);
+    portfolios.value = await listSavedPortfolios();
+    selectedPortfolioId.value = resolveSelectedPortfolioId(portfolios.value, route.query, selectedPortfolioId.value);
   } catch (requestError) {
-    error.value = requestError instanceof Error ? requestError.message : 'Unable to load saved portfolio';
+    error.value = requestError instanceof Error ? requestError.message : 'Unable to load saved portfolios';
   }
 }
 
 async function buildFrontier() {
   const validationMessage = formError.value;
 
-  if (validationMessage) {
-    error.value = validationMessage;
+  if (validationMessage || !selectedPortfolio.value) {
+    error.value = validationMessage || 'Select a saved portfolio first.';
     return;
   }
 
@@ -49,7 +45,7 @@ async function buildFrontier() {
 
   try {
     result.value = await postJson<EfficientFrontierResponse>('/api/analysis/efficient-frontier', {
-      universe: universe.value,
+      universe: createUniverseText(selectedPortfolio.value),
     });
   } catch (requestError) {
     error.value = requestError instanceof Error ? requestError.message : 'Unable to build frontier';
@@ -59,8 +55,10 @@ async function buildFrontier() {
 }
 
 watch(() => route.query.portfolioId, () => {
-  void syncSavedPortfolio();
+  selectedPortfolioId.value = resolveSelectedPortfolioId(portfolios.value, route.query, selectedPortfolioId.value);
 }, { immediate: true });
+
+void loadPortfolios();
 </script>
 
 <template>
@@ -68,22 +66,37 @@ watch(() => route.query.portfolioId, () => {
     <div class="page-header">
       <div>
         <h2>Efficient frontier</h2>
-        <p class="muted">Use this page to frame the eventual frontier chart and model portfolio recommendations.</p>
-        <p v-if="selectedPortfolioName" class="success">Loaded universe from saved portfolio: {{ selectedPortfolioName }}</p>
+        <p class="muted">Use a premade portfolio as the asset universe for the frontier analysis.</p>
       </div>
     </div>
 
     <div class="grid-2">
       <form class="panel" @submit.prevent="buildFrontier">
         <label>
-          Asset universe
-          <textarea v-model="universe" />
+          Premade portfolio
+          <select v-model="selectedPortfolioId">
+            <option v-for="portfolio in portfolios" :key="portfolio.id" :value="portfolio.id">
+              {{ portfolio.name }}
+            </option>
+          </select>
         </label>
-        <p class="muted">Parsed assets: {{ parsedUniverse.length }}</p>
+        <div v-if="selectedPortfolio" class="mode-summary">
+          <p class="list-label">Portfolio universe</p>
+          <p>{{ selectedPortfolio.assets.length }} holdings | Benchmark ticker: {{ selectedPortfolio.benchmark }}</p>
+          <div>
+            <span v-for="asset in selectedPortfolio.assets" :key="asset.symbol" class="asset-pill">
+              {{ asset.symbol }} {{ asset.weight.toFixed(0) }}%
+            </span>
+          </div>
+        </div>
         <div class="button-row">
           <button class="primary-button" type="submit">{{ loading ? 'Generating...' : 'Generate frontier' }}</button>
         </div>
         <p v-if="formError && !error" class="muted">{{ formError }}</p>
+        <p v-if="!portfolios.length" class="muted">
+          No premade portfolios yet.
+          <RouterLink class="secondary-link inline-link" to="/saved-portfolios">Build one on the saved portfolios page</RouterLink>
+        </p>
       </form>
 
       <div class="panel">

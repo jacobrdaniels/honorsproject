@@ -4,16 +4,23 @@ import { RouterLink } from 'vue-router';
 
 import { deleteJson, getJson, postJson, putJson } from '../lib/api';
 import {
-  formatAllocationText,
+  assetRowsToAllocationText,
+  createPortfolioAssetRows,
   parseAllocationText,
-  sumAllocationWeights,
+  portfolioToAssetRows,
+  sumAssetRowWeights,
+  type PortfolioAssetRow,
 } from '../lib/portfolio';
 import type { SavedPortfolio } from '../types';
 
-const name = ref('Core three-fund');
-const benchmark = ref('SPY');
-const notes = ref('Simple long-term allocation for comparisons.');
-const assetsText = ref('VTI:60, VXUS:20, BND:20');
+const defaultName = 'Core three-fund';
+const defaultBenchmark = 'SPY';
+const defaultNotes = 'Simple long-term allocation for comparisons.';
+
+const name = ref(defaultName);
+const benchmark = ref(defaultBenchmark);
+const notes = ref(defaultNotes);
+const assetRows = ref<PortfolioAssetRow[]>(createPortfolioAssetRows());
 const editingId = ref<string | null>(null);
 const deletingId = ref<string | null>(null);
 const portfolios = ref<SavedPortfolio[]>([]);
@@ -22,32 +29,33 @@ const saving = ref(false);
 const message = ref('');
 const error = ref('');
 
-const parsedAssets = computed(() => parseAllocationText(assetsText.value));
-const assetPreview = computed(() => parsedAssets.value.map((asset) => `${asset.symbol}:${asset.weight}`));
-const totalWeight = computed(() => sumAllocationWeights(parsedAssets.value));
+const allocationsText = computed(() => assetRowsToAllocationText(assetRows.value));
+const parsedAssets = computed(() => parseAllocationText(allocationsText.value));
+const totalWeight = computed(() => sumAssetRowWeights(assetRows.value));
 const isEditing = computed(() => editingId.value !== null);
+const totalIsBalanced = computed(() => totalWeight.value === 100);
 
 const formError = computed(() => {
   if (!name.value.trim()) {
     return 'Portfolio name is required.';
   }
 
-  if (!assetsText.value.trim()) {
-    return 'Allocations are required.';
+  if (!benchmark.value.trim()) {
+    return 'Benchmark ticker is required.';
   }
 
   if (parsedAssets.value.length === 0) {
-    return 'Use the format TICKER:WEIGHT, for example VTI:60, VXUS:20, BND:20.';
+    return 'Enter at least one asset ticker and weight.';
   }
 
   return '';
 });
 
 function resetForm() {
-  name.value = 'Core three-fund';
-  benchmark.value = 'SPY';
-  notes.value = 'Simple long-term allocation for comparisons.';
-  assetsText.value = 'VTI:60, VXUS:20, BND:20';
+  name.value = defaultName;
+  benchmark.value = defaultBenchmark;
+  notes.value = defaultNotes;
+  assetRows.value = createPortfolioAssetRows();
   editingId.value = null;
   message.value = '';
   error.value = '';
@@ -62,7 +70,7 @@ function startEditing(portfolio: SavedPortfolio) {
   name.value = portfolio.name;
   benchmark.value = portfolio.benchmark;
   notes.value = portfolio.notes;
-  assetsText.value = formatAllocationText(portfolio.assets);
+  assetRows.value = portfolioToAssetRows(portfolio);
   message.value = `Editing ${portfolio.name}.`;
   error.value = '';
 }
@@ -97,9 +105,9 @@ async function savePortfolio() {
     const wasEditing = editingId.value !== null;
     const payload = {
       name: name.value,
-      benchmark: benchmark.value,
+      benchmark: benchmark.value.trim().toUpperCase(),
       notes: notes.value,
-      allocations: assetsText.value,
+      allocations: allocationsText.value,
     };
 
     const saved = editingId.value
@@ -144,8 +152,8 @@ onMounted(loadPortfolios);
   <section class="page">
     <div class="page-header">
       <div>
-        <h2>Saved portfolios</h2>
-        <p class="muted">This page is connected to the local SQLite-backed API so saved scenarios can be reused across the analysis tools.</p>
+        <h2>Portfolio Model Configuration</h2>
+        <p class="muted">Design premade portfolios here, keep the benchmark as a ticker, and reuse those saved models in every analysis mode.</p>
       </div>
       <div class="button-row">
         <button class="secondary-button" type="button" @click="loadPortfolios">Refresh</button>
@@ -153,46 +161,88 @@ onMounted(loadPortfolios);
       </div>
     </div>
 
-    <div class="grid-2">
-      <form class="panel" @submit.prevent="savePortfolio">
-        <p class="list-label">Portfolio editor</p>
-        <label>
-          Portfolio name
-          <input v-model="name" placeholder="Income tilt" />
-        </label>
-        <label>
-          Benchmark
-          <input v-model="benchmark" placeholder="SPY" />
-        </label>
-        <label>
-          Allocations
-          <textarea v-model="assetsText" />
-        </label>
-        <label>
-          Notes
-          <textarea v-model="notes" />
-        </label>
-        <div>
-          <p class="list-label">Preview</p>
-          <span v-for="asset in assetPreview" :key="asset" class="asset-pill">{{ asset }}</span>
-          <p class="muted">Parsed assets: {{ parsedAssets.length }} | Total weight: {{ totalWeight.toFixed(2) }}%</p>
+    <div class="builder-shell">
+      <form class="panel builder-panel" @submit.prevent="savePortfolio">
+        <div class="builder-section">
+          <p class="list-label">Portfolio settings</p>
+          <div class="config-grid">
+            <div class="config-row">
+              <label class="config-label" for="portfolio-name">Portfolio name</label>
+              <div class="config-control">
+                <input id="portfolio-name" v-model="name" placeholder="Income tilt" />
+              </div>
+            </div>
+            <div class="config-row">
+              <label class="config-label" for="benchmark-ticker">Benchmark ticker</label>
+              <div class="config-control">
+                <input id="benchmark-ticker" v-model="benchmark" placeholder="SPY" />
+              </div>
+            </div>
+            <div class="config-row">
+              <label class="config-label" for="portfolio-notes">Notes</label>
+              <div class="config-control">
+                <textarea id="portfolio-notes" v-model="notes" />
+              </div>
+            </div>
+          </div>
         </div>
+
+        <div class="builder-section">
+          <div class="assets-header">
+            <p class="list-label">Portfolio assets</p>
+            <p class="muted">All analysis modes reuse these saved allocations, so there is one place to build the portfolio and benchmark setup.</p>
+          </div>
+          <div class="asset-grid">
+            <div class="asset-grid-row asset-grid-header">
+              <div>Asset</div>
+              <div>Ticker</div>
+              <div>Weight</div>
+              <div>%</div>
+            </div>
+            <div v-for="(row, index) in assetRows" :key="row.label" class="asset-grid-row">
+              <div class="asset-row-label">{{ row.label }}</div>
+              <input v-model="assetRows[index].symbol" :placeholder="`Ticker ${index + 1}`" />
+              <input v-model="assetRows[index].weight" inputmode="decimal" placeholder="0" />
+              <div class="asset-suffix">%</div>
+            </div>
+            <div class="asset-grid-row asset-grid-total">
+              <div>Total</div>
+              <div class="muted">Saved portfolio</div>
+              <div :class="{ success: totalIsBalanced, error: !totalIsBalanced && totalWeight > 0 }">
+                {{ totalWeight.toFixed(2) }}
+              </div>
+              <div class="asset-suffix">%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="builder-section">
+          <p class="list-label">Preview</p>
+          <div>
+            <span v-for="asset in parsedAssets" :key="asset.symbol" class="asset-pill">
+              {{ asset.symbol }} {{ asset.weight.toFixed(0) }}%
+            </span>
+          </div>
+        </div>
+
         <div class="button-row">
           <button class="primary-button" type="submit">{{ saving ? 'Saving...' : (isEditing ? 'Update portfolio' : 'Save portfolio') }}</button>
+          <button class="secondary-button" type="button" @click="resetForm">Clear form</button>
         </div>
         <p v-if="formError && !error" class="muted">{{ formError }}</p>
         <p v-if="message" class="success">{{ message }}</p>
         <p v-if="error" class="error">{{ error }}</p>
       </form>
 
-      <div class="panel">
+      <div class="panel library-panel">
         <h3>Portfolio library</h3>
+        <p class="muted">All analysis modes should be launched from one of these premade portfolios.</p>
         <p v-if="loading" class="muted">Loading portfolios...</p>
         <ul v-else-if="portfolios.length" class="list">
           <li v-for="portfolio in portfolios" :key="portfolio.id" class="portfolio-card">
             <div>
               <h3>{{ portfolio.name }}</h3>
-              <p class="muted">Benchmark: {{ portfolio.benchmark }}</p>
+              <p class="muted">Benchmark ticker: {{ portfolio.benchmark }}</p>
             </div>
             <p>{{ portfolio.notes }}</p>
             <div>
@@ -212,14 +262,14 @@ onMounted(loadPortfolios);
               </button>
             </div>
             <div class="button-row">
-              <RouterLink class="secondary-link" :to="{ path: '/backtest', query: { portfolioId: portfolio.id } }">Use in backtest</RouterLink>
-              <RouterLink class="secondary-link" :to="{ path: '/factor-regression', query: { portfolioId: portfolio.id } }">Use in factors</RouterLink>
-              <RouterLink class="secondary-link" :to="{ path: '/efficient-frontier', query: { portfolioId: portfolio.id } }">Use in frontier</RouterLink>
-              <RouterLink class="secondary-link" :to="{ path: '/optimization', query: { portfolioId: portfolio.id } }">Use in optimization</RouterLink>
+              <RouterLink class="secondary-link" :to="{ path: '/backtest', query: { portfolioId: portfolio.id } }">Analyze in backtest</RouterLink>
+              <RouterLink class="secondary-link" :to="{ path: '/factor-regression', query: { portfolioId: portfolio.id } }">Analyze in factors</RouterLink>
+              <RouterLink class="secondary-link" :to="{ path: '/efficient-frontier', query: { portfolioId: portfolio.id } }">Analyze in frontier</RouterLink>
+              <RouterLink class="secondary-link" :to="{ path: '/optimization', query: { portfolioId: portfolio.id } }">Analyze in optimization</RouterLink>
             </div>
           </li>
         </ul>
-        <p v-else class="muted">No saved portfolios yet. Create the first one from the form.</p>
+        <p v-else class="muted">No saved portfolios yet. Create the first one in the builder on this page.</p>
       </div>
     </div>
   </section>

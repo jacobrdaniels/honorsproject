@@ -15,7 +15,7 @@ const navigation = [
   { to: '/factor-regression', label: 'Factor Regression' },
   { to: '/efficient-frontier', label: 'Efficient Frontier' },
   { to: '/optimization', label: 'Optimization' },
-  { to: '/saved-portfolios', label: 'Saved Portfolios' },
+  { to: '/saved-portfolios', label: 'Portfolio Builder' },
 ] as const;
 
 const activePath = computed(() => route.path);
@@ -36,7 +36,7 @@ onMounted(async () => {
         <p class="eyebrow">Honors Project</p>
         <h1>Portfolio Analytics Platform</h1>
         <p class="hero-copy">
-          A full-stack workspace for portfolio backtests, factor analysis, optimization, and saved scenarios.
+          Build premade portfolios once, then run each analysis mode with its own settings against that saved model.
         </p>
       </div>
       <div class="status-card">

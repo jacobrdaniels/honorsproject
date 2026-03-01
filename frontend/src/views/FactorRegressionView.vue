@@ -1,46 +1,40 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 
 import { postJson } from '../lib/api';
-import { getPortfolioTickers, parseTickerText } from '../lib/portfolio';
-import { getPortfolioIdFromQuery, getSavedPortfolio } from '../lib/savedPortfolio';
-import type { FactorResponse } from '../types';
+import { getPortfolioTickers } from '../lib/portfolio';
+import { listSavedPortfolios, resolveSelectedPortfolioId } from '../lib/savedPortfolio';
+import type { FactorResponse, SavedPortfolio } from '../types';
 
 const route = useRoute();
+const portfolios = ref<SavedPortfolio[]>([]);
+const selectedPortfolioId = ref('');
 const method = ref('OLS');
 const model = ref('Five-Factor Model');
-const tickers = ref('VTI, VXUS, BND');
-const selectedPortfolioName = ref('');
 const result = ref<FactorResponse | null>(null);
 const error = ref('');
 const loading = ref(false);
 
-const parsedTickers = computed(() => parseTickerText(tickers.value));
-const formError = computed(() => parsedTickers.value.length === 0 ? 'Enter at least one ticker symbol.' : '');
+const selectedPortfolio = computed(() =>
+  portfolios.value.find((portfolio) => portfolio.id === selectedPortfolioId.value) ?? null,
+);
+const formError = computed(() => selectedPortfolio.value ? '' : 'Create or select a saved portfolio first.');
 
-async function syncSavedPortfolio() {
-  const portfolioId = getPortfolioIdFromQuery(route.query);
-
-  if (!portfolioId) {
-    selectedPortfolioName.value = '';
-    return;
-  }
-
+async function loadPortfolios() {
   try {
-    const portfolio = await getSavedPortfolio(`/api/portfolios/${portfolioId}`);
-    selectedPortfolioName.value = portfolio.name;
-    tickers.value = getPortfolioTickers(portfolio);
+    portfolios.value = await listSavedPortfolios();
+    selectedPortfolioId.value = resolveSelectedPortfolioId(portfolios.value, route.query, selectedPortfolioId.value);
   } catch (requestError) {
-    error.value = requestError instanceof Error ? requestError.message : 'Unable to load saved portfolio';
+    error.value = requestError instanceof Error ? requestError.message : 'Unable to load saved portfolios';
   }
 }
 
 async function runAnalysis() {
   const validationMessage = formError.value;
 
-  if (validationMessage) {
-    error.value = validationMessage;
+  if (validationMessage || !selectedPortfolio.value) {
+    error.value = validationMessage || 'Select a saved portfolio first.';
     return;
   }
 
@@ -51,7 +45,7 @@ async function runAnalysis() {
     result.value = await postJson<FactorResponse>('/api/analysis/factors', {
       method: method.value,
       model: model.value,
-      tickers: tickers.value,
+      tickers: getPortfolioTickers(selectedPortfolio.value),
     });
   } catch (requestError) {
     error.value = requestError instanceof Error ? requestError.message : 'Unable to run factor analysis';
@@ -61,8 +55,10 @@ async function runAnalysis() {
 }
 
 watch(() => route.query.portfolioId, () => {
-  void syncSavedPortfolio();
+  selectedPortfolioId.value = resolveSelectedPortfolioId(portfolios.value, route.query, selectedPortfolioId.value);
 }, { immediate: true });
+
+void loadPortfolios();
 </script>
 
 <template>
@@ -70,13 +66,20 @@ watch(() => route.query.portfolioId, () => {
     <div class="page-header">
       <div>
         <h2>Factor regression</h2>
-        <p class="muted">Start with the model and regression controls that will later map to real factor return data.</p>
-        <p v-if="selectedPortfolioName" class="success">Loaded tickers from saved portfolio: {{ selectedPortfolioName }}</p>
+        <p class="muted">Choose a premade portfolio, then configure the regression model for that saved set of tickers.</p>
       </div>
     </div>
 
     <div class="grid-2">
       <form class="panel" @submit.prevent="runAnalysis">
+        <label>
+          Premade portfolio
+          <select v-model="selectedPortfolioId">
+            <option v-for="portfolio in portfolios" :key="portfolio.id" :value="portfolio.id">
+              {{ portfolio.name }}
+            </option>
+          </select>
+        </label>
         <div class="grid-2">
           <label>
             Regression method
@@ -95,15 +98,19 @@ watch(() => route.query.portfolioId, () => {
             </select>
           </label>
         </div>
-        <label>
-          Tickers
-          <textarea v-model="tickers" />
-        </label>
-        <p class="muted">Parsed tickers: {{ parsedTickers.join(', ') || 'none yet' }}</p>
+        <div v-if="selectedPortfolio" class="mode-summary">
+          <p class="list-label">Portfolio tickers</p>
+          <p>{{ getPortfolioTickers(selectedPortfolio) }}</p>
+          <p class="muted">Benchmark ticker: {{ selectedPortfolio.benchmark }}</p>
+        </div>
         <div class="button-row">
           <button class="primary-button" type="submit">{{ loading ? 'Running...' : 'Run regression' }}</button>
         </div>
         <p v-if="formError && !error" class="muted">{{ formError }}</p>
+        <p v-if="!portfolios.length" class="muted">
+          No premade portfolios yet.
+          <RouterLink class="secondary-link inline-link" to="/saved-portfolios">Build one on the saved portfolios page</RouterLink>
+        </p>
       </form>
 
       <div class="panel">

@@ -3,40 +3,40 @@ import { RouterLink } from 'vue-router';
 
 const featureCards = [
   {
-    title: 'Backtest portfolios',
-    description: 'Compare allocations, benchmark them, and surface risk-adjusted return metrics.',
+    title: 'Backtest saved models',
+    description: 'Run historical performance analysis using one of your premade portfolios and its saved benchmark ticker.',
     to: '/backtest',
     action: 'Open backtest',
   },
   {
     title: 'Run factor regression',
-    description: 'Inspect portfolio exposure to market, size, value, momentum, and related factors.',
+    description: 'Analyze factor exposures from a premade portfolio without rebuilding the ticker list in each mode.',
     to: '/factor-regression',
     action: 'Open regression',
   },
   {
     title: 'Explore the efficient frontier',
-    description: 'Visualize risk and return trade-offs before choosing a target allocation.',
+    description: 'Use a saved portfolio as the reusable asset universe for frontier analysis.',
     to: '/efficient-frontier',
     action: 'Open frontier',
   },
   {
     title: 'Optimize allocations',
-    description: 'Start from guardrails and let the API propose a portfolio mix for the selected objective.',
+    description: 'Start from a saved portfolio model and apply optimizer-specific settings in one dedicated mode.',
     to: '/optimization',
     action: 'Open optimizer',
   },
   {
-    title: 'Save scenarios',
-    description: 'Store portfolio ideas locally so they can be revisited quickly during analysis.',
+    title: 'Build saved portfolios',
+    description: 'Use the portfolio builder page to define benchmark tickers and reusable allocations for every mode.',
     to: '/saved-portfolios',
-    action: 'Open saved portfolios',
+    action: 'Open portfolio builder',
   },
   {
-    title: 'Iterate quickly',
-    description: 'The scaffold keeps route boundaries and API shapes in place for later real analytics logic.',
+    title: 'One source of truth',
+    description: 'Portfolio design happens in one place, while every analysis page stays focused on mode-specific settings.',
     to: '/saved-portfolios',
-    action: 'Start with saved scenarios',
+    action: 'Start with builder',
   },
 ];
 </script>
@@ -47,17 +47,17 @@ const featureCards = [
       <div>
         <h2>Project dashboard</h2>
         <p class="muted">
-          This base project mirrors the main analysis workflows you outlined in the honors project proposal.
+          Build a portfolio once on the saved portfolios page, then choose that premade model inside each analysis workflow.
         </p>
       </div>
       <div class="panel">
-        <p class="list-label">Initial scope</p>
+        <p class="list-label">Workflow</p>
         <ul class="list">
-          <li>Backtest portfolio</li>
-          <li>Factor regression</li>
-          <li>Efficient frontier</li>
-          <li>Portfolio optimization</li>
-          <li>Saved portfolio information</li>
+          <li>Design a premade portfolio</li>
+          <li>Save its benchmark ticker</li>
+          <li>Select it in backtest</li>
+          <li>Select it in factor regression</li>
+          <li>Select it in frontier and optimization</li>
         </ul>
       </div>
     </div>
