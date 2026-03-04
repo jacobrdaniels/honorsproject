@@ -11,6 +11,7 @@
     "start": "node dist/db/migrate.js && node dist/server.js",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "tsx src/db/migrate.ts",
+    "factor:import": "tsx src/factordata/importKenFrench.ts",
     "market:import": "tsx src/marketdata/importYahooFinance.ts",
     "test": "vitest run src"
   },

@@ -1,0 +1,7 @@
+# Ken French CSV files expected by the factor import script.
+# Keep the extracted CSV filenames here for quick human reference.
+F-F_Research_Data_Factors.csv
+F-F_Momentum_Factor.csv
+F-F_Research_Data_5_Factors_2x3_daily.csv
+F-F_Momentum_Factor_daily.csv
+F-F_Research_Data_Factors_weekly.csv

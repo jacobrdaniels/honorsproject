@@ -59,6 +59,25 @@ Saved portfolios are stored in a local SQLite database through Drizzle. The data
 3. Run `npm run dev` to start both the frontend and backend.
 4. Open `http://localhost:5173/` in a browser.
 
+## Quickstart
+
+After cloning the repository, run:
+
+```bash
+npm install
+npm run db:migrate --workspace backend
+npm run dev
+```
+
+Optional one-off data imports for a fuller demo:
+
+```bash
+npm run market:import --workspace backend -- SPY VTI VXUS BND
+npm run factor:import --workspace backend
+```
+
+Then open `http://localhost:5173/`.
+
 ## Useful Scripts
 
 - `npm run dev`: start frontend and backend together
@@ -69,6 +88,7 @@ Saved portfolios are stored in a local SQLite database through Drizzle. The data
 - `npm run test`: run backend unit tests
 - `npm run db:migrate --workspace backend`: apply backend SQLite migrations manually
 - `npm run db:generate --workspace backend`: generate future Drizzle migration files from the schema
+- `npm run factor:import --workspace backend`: import the Ken French factor CSVs listed in `factordata/expected-files.txt` into `factor_returns`
 - `npm run market:import --workspace backend -- SPY VTI VXUS BND`: fetch Yahoo Finance daily history, cache it under `backend/marketdata/`, and upsert it into `stock_prices`
 
 ## Environment Files
@@ -77,6 +97,7 @@ Saved portfolios are stored in a local SQLite database through Drizzle. The data
 - Copy `backend/.env.example` to `backend/.env.local` if you want to change the API port, CORS origin, or SQLite database location.
 - The backend now loads `backend/.env.local` automatically for local development.
 - `MARKETDATA_TICKERS` and `MARKETDATA_START_DATE` let you control the default Yahoo Finance import universe for one-off data loads.
+- Put the Ken French CSV files you want to import in `factordata/` and keep the expected filenames in `factordata/expected-files.txt`.
 
 ## Demo Workflow
 
