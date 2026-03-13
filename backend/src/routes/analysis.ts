@@ -1,32 +1,33 @@
 import { Router } from 'express';
 
-import type {
-  BacktestResponse,
-  EfficientFrontierResponse,
-  FactorResponse,
-  OptimizationResponse,
-} from '../types';
-import {
-  buildBacktestResponse,
-  buildEfficientFrontierResponse,
-  buildFactorResponse,
-  buildOptimizationResponse,
-} from '../lib/analysisScenarios';
+import type { BacktestRequest, BacktestResponse } from '../types';
 import { buildBacktestResponseFromMarketData } from '../lib/marketDataBacktest';
 
 const analysisRouter = Router();
 
 analysisRouter.post('/backtest', async (request, response, next) => {
-  const backtestInput = {
+  const rebalanceMode = String(request.body?.rebalanceMode ?? 'none');
+  const backtestInput: BacktestRequest = {
     benchmark: String(request.body?.benchmark ?? 'SPY'),
     allocations: String(request.body?.allocations ?? ''),
     startDate: String(request.body?.startDate ?? '2018-01-01'),
     endDate: String(request.body?.endDate ?? '2026-01-28'),
+    rebalanceMode: rebalanceMode === 'monthly'
+      || rebalanceMode === 'quarterly'
+      || rebalanceMode === 'annual'
+      ? rebalanceMode
+      : 'none',
   };
 
   try {
-    const payload: BacktestResponse = await buildBacktestResponseFromMarketData(backtestInput)
-      ?? buildBacktestResponse(backtestInput);
+    const payload: BacktestResponse | null = await buildBacktestResponseFromMarketData(backtestInput);
+
+    if (!payload) {
+      response.status(400).json({
+        message: 'Not enough stored market data is available for that portfolio, benchmark, and date range.',
+      });
+      return;
+    }
 
     response.json(payload);
   } catch (error) {
@@ -34,33 +35,16 @@ analysisRouter.post('/backtest', async (request, response, next) => {
   }
 });
 
-analysisRouter.post('/factors', (request, response) => {
-  const payload: FactorResponse = buildFactorResponse({
-    method: String(request.body?.method ?? 'OLS'),
-    model: String(request.body?.model ?? 'Five-Factor Model'),
-    tickers: String(request.body?.tickers ?? ''),
-  });
-
-  response.json(payload);
+analysisRouter.post('/factors', (_request, response) => {
+  response.status(501).json({ message: 'Factor regression is being rebuilt against imported factor data.' });
 });
 
-analysisRouter.post('/efficient-frontier', (request, response) => {
-  const payload: EfficientFrontierResponse = buildEfficientFrontierResponse({
-    universe: String(request.body?.universe ?? ''),
-  });
-
-  response.json(payload);
+analysisRouter.post('/efficient-frontier', (_request, response) => {
+  response.status(501).json({ message: 'Efficient frontier analysis is being folded into optimization.' });
 });
 
-analysisRouter.post('/optimize', (request, response) => {
-  const payload: OptimizationResponse = buildOptimizationResponse({
-    objective: String(request.body?.objective ?? 'Max Sharpe'),
-    constraints: String(request.body?.constraints ?? ''),
-    targetReturn: Number(request.body?.targetReturn),
-    allocations: typeof request.body?.allocations === 'string' ? request.body.allocations : '',
-  });
-
-  response.json(payload);
+analysisRouter.post('/optimize', (_request, response) => {
+  response.status(501).json({ message: 'Optimization is not wired to market data yet.' });
 });
 
 export default analysisRouter;
