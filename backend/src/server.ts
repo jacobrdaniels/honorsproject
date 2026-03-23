@@ -33,7 +33,6 @@ app.get('/', (_request, response) => {
       analyses: [
         '/api/analysis/backtest',
         '/api/analysis/factors',
-        '/api/analysis/efficient-frontier',
         '/api/analysis/optimize',
       ],
     },
@@ -56,3 +55,4 @@ app.use((error: unknown, _request: Request, response: Response, _next: NextFunct
 app.listen(port, () => {
   console.log(`Portfolio API listening on http://localhost:${port}`);
 });
+

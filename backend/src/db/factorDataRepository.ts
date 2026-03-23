@@ -12,6 +12,12 @@ export type StoredFactorRow = {
   riskFree: number;
 };
 
+type FactorQueryInput = {
+  factorSet: string;
+  startDate: string;
+  endDate: string;
+};
+
 export async function upsertFactorReturns(rows: StoredFactorRow[]): Promise<void> {
   if (rows.length === 0) {
     return;
@@ -56,4 +62,26 @@ export async function upsertFactorReturns(rows: StoredFactorRow[]): Promise<void
   });
 
   transaction(rows);
+}
+
+export async function getStoredFactorReturns(input: FactorQueryInput): Promise<StoredFactorRow[]> {
+  return sqlite
+    .prepare(`
+      SELECT
+        factor_set AS factorSet,
+        period,
+        market_excess AS marketExcess,
+        smb,
+        hml,
+        momentum,
+        rmw,
+        cma,
+        risk_free AS riskFree
+      FROM factor_returns
+      WHERE factor_set = ?
+        AND period >= ?
+        AND period <= ?
+      ORDER BY period ASC
+    `)
+    .all(input.factorSet, input.startDate, input.endDate) as StoredFactorRow[];
 }

@@ -6,19 +6,27 @@ import type { HealthResponse } from '../types';
 const healthRouter = Router();
 
 healthRouter.get('/', (_request, response) => {
-  sqlite.prepare('SELECT 1').get();
+  let databaseStatus = 'ready';
+  let overallStatus = 'ok';
+
+  try {
+    sqlite.prepare('SELECT 1').get();
+  } catch (error) {
+    databaseStatus = error instanceof Error ? `error: ${error.message}` : 'error';
+    overallStatus = 'degraded';
+  }
 
   const payload: HealthResponse = {
-    status: 'ok',
+    status: overallStatus,
     service: 'portfolio-backend',
     database: {
-      status: 'ready',
+      status: databaseStatus,
       path: getDatabaseFilePath(),
     },
     checkedAt: new Date().toISOString(),
   };
 
-  response.json(payload);
+  response.status(overallStatus === 'ok' ? 200 : 503).json(payload);
 });
 
 export default healthRouter;
