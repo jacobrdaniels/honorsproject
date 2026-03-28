@@ -3,12 +3,6 @@ export type AssetAllocation = {
   weight: number;
 };
 
-export type FrontierAsset = {
-  symbol: string;
-  expectedReturn: number;
-  volatility: number;
-};
-
 export type SavedPortfolio = {
   id: string;
   name: string;
@@ -125,31 +119,149 @@ export type BacktestResponse = {
   notes: string[];
 };
 
-export type FactorResponse = {
-  regressionMethod: string;
-  factorModel: string;
-  analyzedTickers: string[];
-  observations: number;
-  factors: Array<{ name: string; exposure: number }>;
-  alpha: number;
+export type FactorRegressionMethod = 'OLS';
+
+export type FactorFrequency = 'daily' | 'weekly' | 'monthly';
+
+export type FactorColumnKey = 'marketExcess' | 'smb' | 'hml' | 'momentum' | 'rmw' | 'cma';
+
+export type FactorCoefficientSignificance = 'high' | 'moderate' | 'limited' | 'insufficient';
+
+export type FactorRequest = {
+  allocations: string;
+  startDate: string;
+  endDate: string;
+  rebalanceMode: BacktestRebalanceMode;
+  method: FactorRegressionMethod;
+  frequency: FactorFrequency;
+  factors: FactorColumnKey[];
+};
+
+export type FactorRegressionSummary = {
+  annualizedAlpha: number;
+  annualizedExcessReturn: number;
+  portfolioCagr: number;
+  portfolioVolatility: number;
+  residualVolatility: number;
   rSquared: number;
+  adjustedRSquared: number;
+  observations: number;
+};
+
+export type FactorRegressionCoefficient = {
+  name: string;
+  exposure: number;
+  standardError: number | null;
+  tStatistic: number | null;
+  significance: FactorCoefficientSignificance;
+  annualizedContribution: number | null;
+  averageFactorReturn: number | null;
+};
+
+export type FactorRegressionCoverage = {
+  requestedStartDate: string;
+  requestedEndDate: string;
+  priceStartDate: string;
+  priceEndDate: string;
+  factorStartDate: string | null;
+  factorEndDate: string | null;
+  overlapStartDate: string;
+  overlapEndDate: string;
+  priceTradingDays: number;
+  factorTradingDays: number;
+  regressionObservations: number;
+  factorStatus: 'full' | 'partial' | 'missing';
+  missingSymbols: string[];
+};
+
+export type FactorRegressionSeriesPoint = {
+  period: string;
+  portfolioReturn: number;
+  fittedReturn: number;
+  portfolioExcess: number;
+  fittedExcess: number;
+  residual: number;
+  cumulativePortfolioReturn: number;
+  cumulativeFittedReturn: number;
+};
+
+export type FactorRegressionRollingPoint = {
+  period: string;
+  marketBeta: number | null;
+  annualizedAlpha: number | null;
+  rSquared: number | null;
+};
+
+export type FactorResponse = {
+  regressionMethod: FactorRegressionMethod;
+  frequency: FactorFrequency;
+  selectedFactors: FactorColumnKey[];
+  rebalanceMode: BacktestRebalanceMode;
+  analyzedTickers: string[];
+  portfolio: AssetAllocation[];
+  startDate: string;
+  endDate: string;
+  summary: FactorRegressionSummary;
+  coefficients: FactorRegressionCoefficient[];
+  factors: Array<{
+    name: string;
+    exposure: number;
+    annualizedContribution: number | null;
+    averageFactorReturn: number | null;
+  }>;
+  series: FactorRegressionSeriesPoint[];
+  rolling: FactorRegressionRollingPoint[];
+  coverage: FactorRegressionCoverage;
   notes: string[];
 };
 
-export type EfficientFrontierResponse = {
-  universe: FrontierAsset[];
-  universeCount: number;
-  frontier: Array<{ risk: number; return: number }>;
-  modelPortfolio: AssetAllocation[];
-  assumptions: string[];
+export type OptimizationObjective = 'max_sharpe' | 'min_variance' | 'target_return';
+
+export type OptimizationRequest = {
+  universe: string;
+  startDate: string;
+  endDate: string;
+  objective: OptimizationObjective;
+  targetReturn?: number;
+  riskFreeRate?: number;
+};
+
+export type OptimizationAssetStats = {
+  symbol: string;
+  expectedReturn: number;
+  volatility: number;
+};
+
+export type OptimizationPoint = {
+  expectedReturn: number;
+  volatility: number;
+  sharpe: number;
+  weights: AssetAllocation[];
+};
+
+export type OptimizationCoverage = {
+  requestedStartDate: string;
+  requestedEndDate: string;
+  startDate: string;
+  endDate: string;
+  tradingDays: number;
+  availableSymbols: string[];
+  missingSymbols: string[];
+  riskFreeSource: 'factor_returns' | 'override' | 'default';
 };
 
 export type OptimizationResponse = {
-  objective: string;
-  constraintSummary: string;
+  objective: OptimizationObjective;
   targetReturn: number | null;
-  expectedReturn: number;
-  expectedVolatility: number;
-  allocation: AssetAllocation[];
+  startDate: string;
+  endDate: string;
+  riskFreeRate: number;
+  assets: OptimizationAssetStats[];
+  samplePoints: Array<{ volatility: number; expectedReturn: number }>;
+  frontier: OptimizationPoint[];
+  minVariance: OptimizationPoint;
+  maxSharpe: OptimizationPoint;
+  selected: OptimizationPoint;
+  coverage: OptimizationCoverage;
   notes: string[];
 };

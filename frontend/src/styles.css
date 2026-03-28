@@ -98,7 +98,7 @@ p {
 
 .nav-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 28px;
 }
@@ -429,6 +429,92 @@ textarea {
   color: #96f0b2;
 }
 
+.factor-summary-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.factor-static-value {
+  margin-bottom: 0;
+  color: #eff5ff;
+  font-weight: 600;
+}
+
+.factor-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.factor-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(120, 168, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(10, 21, 40, 0.6);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.factor-checkbox:hover {
+  border-color: rgba(120, 168, 255, 0.45);
+}
+
+.factor-checkbox input[type="checkbox"] {
+  margin-top: 3px;
+  accent-color: #78a8ff;
+}
+
+.factor-checkbox-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.factor-checkbox-name {
+  color: #eff5ff;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.factor-checkbox-desc {
+  font-size: 0.75rem;
+}
+
+.factor-significance-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.factor-significance-high {
+  background: rgba(81, 186, 120, 0.18);
+  color: #b7f5c8;
+}
+
+.factor-significance-moderate {
+  background: rgba(120, 168, 255, 0.18);
+  color: #cfe0ff;
+}
+
+.factor-significance-limited {
+  background: rgba(255, 191, 110, 0.18);
+  color: #ffdca8;
+}
+
+.factor-significance-insufficient {
+  background: rgba(146, 174, 221, 0.14);
+  color: #dce8f9;
+}
+
 .backtest-layout {
   align-items: start;
 }
@@ -680,6 +766,10 @@ textarea {
 
   .backtest-form-panel {
     position: static;
+  }
+
+  .factor-summary-row {
+    grid-template-columns: 1fr;
   }
 
   .asset-grid-row > div,
