@@ -7,17 +7,25 @@ import type {
   FactorFrequency,
   FactorRequest,
   FactorResponse,
+  OptimizationObjective,
+  OptimizationRequest,
+  OptimizationResponse,
 } from '../types';
 import {
   buildFactorRegressionResponseFromMarketData,
   FactorRegressionInputError,
   FREQUENCY_CONFIG,
 } from '../lib/factorRegression';
+import {
+  buildPortfolioOptimizationResponseFromMarketData,
+  PortfolioOptimizationInputError,
+} from '../lib/portfolioOptimization';
 import { buildBacktestResponseFromMarketData } from '../lib/marketDataBacktest';
 
 const analysisRouter = Router();
 const factorFrequencies: FactorFrequency[] = ['daily', 'weekly', 'monthly'];
 const allFactorColumnKeys: FactorColumnKey[] = ['marketExcess', 'smb', 'hml', 'momentum', 'rmw', 'cma'];
+const optimizationObjectives: OptimizationObjective[] = ['max_sharpe', 'min_variance', 'target_return'];
 
 analysisRouter.post('/backtest', async (request, response, next) => {
   const rebalanceMode = String(request.body?.rebalanceMode ?? 'none');
@@ -59,7 +67,9 @@ analysisRouter.post('/factors', async (request, response, next) => {
 
   try {
     if (rawMethod !== 'OLS') {
-      response.status(400).json({ message: 'Only OLS is currently supported for factor regression.' });
+      response.status(400).json({
+        message: 'Only OLS is currently supported for factor regression.',
+      });
       return;
     }
 
@@ -72,8 +82,8 @@ analysisRouter.post('/factors', async (request, response, next) => {
 
     const frequency = rawFrequency as FactorFrequency;
     const availableFactors = FREQUENCY_CONFIG[frequency].availableFactors;
-    const normalizedFactors: FactorColumnKey[] = [];
 
+    const normalizedFactors: FactorColumnKey[] = [];
     for (const raw of rawFactors) {
       if (typeof raw !== 'string') {
         response.status(400).json({ message: 'Each factor must be a string identifier.' });
@@ -89,7 +99,9 @@ analysisRouter.post('/factors', async (request, response, next) => {
     }
 
     if (normalizedFactors.length === 0) {
-      response.status(400).json({ message: 'Select at least one factor to regress against.' });
+      response.status(400).json({
+        message: 'Select at least one factor to regress against.',
+      });
       return;
     }
 
@@ -102,7 +114,9 @@ analysisRouter.post('/factors', async (request, response, next) => {
     }
 
     if (startDate > endDate) {
-      response.status(400).json({ message: 'Start date must be before the end date.' });
+      response.status(400).json({
+        message: 'Start date must be before the end date.',
+      });
       return;
     }
 
@@ -119,12 +133,13 @@ analysisRouter.post('/factors', async (request, response, next) => {
       frequency,
       factors: normalizedFactors,
     };
-
     const payload: FactorResponse = await buildFactorRegressionResponseFromMarketData(factorInput);
     response.json(payload);
   } catch (error) {
     if (error instanceof FactorRegressionInputError) {
-      response.status(400).json({ message: error.message });
+      response.status(400).json({
+        message: error.message,
+      });
       return;
     }
 
@@ -132,8 +147,49 @@ analysisRouter.post('/factors', async (request, response, next) => {
   }
 });
 
-analysisRouter.post('/optimize', (_request, response) => {
-  response.status(501).json({ message: 'Optimization is not wired to market data yet.' });
+analysisRouter.post('/optimize', async (request, response, next) => {
+  const rawObjective = String(request.body?.objective ?? 'max_sharpe');
+  const startDate = String(request.body?.startDate ?? '2018-01-01');
+  const endDate = String(request.body?.endDate ?? '2026-01-28');
+  const rawTargetReturn = request.body?.targetReturn;
+  const rawRiskFreeRate = request.body?.riskFreeRate;
+
+  try {
+    if (!optimizationObjectives.includes(rawObjective as OptimizationObjective)) {
+      response.status(400).json({
+        message: `Unsupported optimization objective: ${rawObjective}.`,
+      });
+      return;
+    }
+
+    if (startDate > endDate) {
+      response.status(400).json({
+        message: 'Start date must be before the end date.',
+      });
+      return;
+    }
+
+    const optimizationInput: OptimizationRequest = {
+      universe: String(request.body?.universe ?? ''),
+      startDate,
+      endDate,
+      objective: rawObjective as OptimizationObjective,
+      targetReturn: Number.isFinite(Number(rawTargetReturn)) ? Number(rawTargetReturn) : undefined,
+      riskFreeRate: Number.isFinite(Number(rawRiskFreeRate)) ? Number(rawRiskFreeRate) : undefined,
+    };
+
+    const payload: OptimizationResponse = await buildPortfolioOptimizationResponseFromMarketData(optimizationInput);
+    response.json(payload);
+  } catch (error) {
+    if (error instanceof PortfolioOptimizationInputError) {
+      response.status(400).json({
+        message: error.message,
+      });
+      return;
+    }
+
+    next(error);
+  }
 });
 
 export default analysisRouter;
