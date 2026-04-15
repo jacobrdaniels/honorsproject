@@ -15,14 +15,8 @@ const featureCards = [
     action: 'Open regression',
   },
   {
-    title: 'Explore the efficient frontier',
-    description: 'Use a saved portfolio as the reusable asset universe for frontier analysis.',
-    to: '/efficient-frontier',
-    action: 'Open frontier',
-  },
-  {
-    title: 'Optimize allocations',
-    description: 'Start from a saved portfolio model and apply optimizer-specific settings in one dedicated mode.',
+    title: 'Optimize and explore the frontier',
+    description: 'Use a saved portfolio as the universe, then plot the long-only efficient frontier and pick the max-Sharpe, min-variance, or target-return mix.',
     to: '/optimization',
     action: 'Open optimizer',
   },
@@ -57,7 +51,7 @@ const featureCards = [
           <li>Save its benchmark ticker</li>
           <li>Select it in backtest</li>
           <li>Select it in factor regression</li>
-          <li>Select it in frontier and optimization</li>
+          <li>Select it in optimization</li>
         </ul>
       </div>
     </div>
