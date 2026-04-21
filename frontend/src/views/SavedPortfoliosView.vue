@@ -264,7 +264,6 @@ onMounted(loadPortfolios);
             <div class="button-row">
               <RouterLink class="secondary-link" :to="{ path: '/backtest', query: { portfolioId: portfolio.id } }">Analyze in backtest</RouterLink>
               <RouterLink class="secondary-link" :to="{ path: '/factor-regression', query: { portfolioId: portfolio.id } }">Analyze in factors</RouterLink>
-              <RouterLink class="secondary-link" :to="{ path: '/efficient-frontier', query: { portfolioId: portfolio.id } }">Analyze in frontier</RouterLink>
               <RouterLink class="secondary-link" :to="{ path: '/optimization', query: { portfolioId: portfolio.id } }">Analyze in optimization</RouterLink>
             </div>
           </li>

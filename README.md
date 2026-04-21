@@ -1,18 +1,17 @@
 # Honors Project
 
-This repository contains the base scaffold for a portfolio analysis application inspired by Portfolio Visualizer. It is meant to be easy to understand for a first-time reviewer: the frontend already mirrors the planned product areas, and the backend exposes placeholder endpoints with the same feature boundaries the real app will need later.
+This repository contains a portfolio analysis application inspired by Portfolio Visualizer. It is meant to be easy to understand for a first-time reviewer: the frontend already mirrors the planned product areas, and the backend exposes the same feature boundaries the real app needs as the analytics implementation continues to expand.
 
 ## What This Project Is
 
-The current version is a working full-stack starter for these planned workflows:
+The current version is a working full-stack starter for these workflows:
 
 - Portfolio backtesting
 - Factor regression
-- Efficient frontier analysis
-- Portfolio optimization
+- Portfolio optimization (includes the efficient frontier)
 - Saving portfolio scenarios for quick iteration
 
-The analytics responses are still placeholder data. The goal of this stage is to establish project structure, routing, API boundaries, and a simple persistence flow before adding real market data and portfolio math.
+All analysis workflows use stored Yahoo Finance adjusted-close history and Ken French factor returns. The optimization page plots the long-only efficient frontier and also highlights the min-variance, max-Sharpe, and target-return portfolios in a single view.
 
 ## Project Layout
 
@@ -27,13 +26,12 @@ The frontend includes a router and starter pages for:
 - `Dashboard`
 - `Backtest`
 - `Factor Regression`
-- `Efficient Frontier`
-- `Portfolio Optimization`
+- `Optimization` (efficient frontier + portfolio optimization in one page)
 - `Saved Portfolios`
 
-Saved portfolios can now be reused across the analysis pages so a scenario stored in the library can prefill the backtest, factor, frontier, and optimization workflows.
+Saved portfolios can now be reused across the analysis pages so a scenario stored in the library can prefill the backtest, factor, and optimization workflows.
 
-The app calls the backend through `/api` routes and is set up so the placeholder views can be replaced with real charts, tables, and inputs as implementation continues.
+The app calls the backend through `/api` routes and is set up so the remaining placeholder views can be replaced with deeper analytics and richer charts as implementation continues.
 
 ## Backend Overview
 
@@ -47,7 +45,6 @@ The backend currently exposes:
 - `DELETE /api/portfolios/:portfolioId`
 - `POST /api/analysis/backtest`
 - `POST /api/analysis/factors`
-- `POST /api/analysis/efficient-frontier`
 - `POST /api/analysis/optimize`
 
 Saved portfolios are stored in a local SQLite database through Drizzle. The database file lives under `backend/data/`, and the schema already leaves room for future stock-price and factor-return tables.
@@ -114,6 +111,7 @@ Then open `http://localhost:5173/`.
 
 ## Current Limitations
 
-- Analytics results are stubbed rather than calculated from real market data.
+- Every analysis depends on locally imported market data and only covers symbols with stored price history.
+- Optimization is long-only, fully invested, and uses Monte Carlo sampling on the simplex (no general quadratic-programming solver).
 - Portfolio storage is local SQLite, which is fine for project scope but not yet set up for multi-user production use.
 - There is no authentication yet.

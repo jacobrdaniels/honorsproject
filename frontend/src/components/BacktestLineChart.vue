@@ -16,7 +16,7 @@ import { Line } from 'vue-chartjs';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
 
-type ChartValueKind = 'currency' | 'percent';
+type ChartValueKind = 'currency' | 'percent' | 'number';
 
 const props = withDefaults(defineProps<{
   labels: string[];
@@ -40,9 +40,15 @@ const currencyFormatter = new Intl.NumberFormat(undefined, {
 });
 
 function formatChartValue(value: number, kind: ChartValueKind): string {
-  return kind === 'percent'
-    ? `${value.toFixed(2)}%`
-    : currencyFormatter.format(value);
+  if (kind === 'percent') {
+    return `${value.toFixed(2)}%`;
+  }
+
+  if (kind === 'number') {
+    return value.toFixed(2);
+  }
+
+  return currencyFormatter.format(value);
 }
 
 function formatAxisLabel(label: string): string {
