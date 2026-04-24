@@ -31,9 +31,9 @@ const props = defineProps<{
 }>();
 
 const markerColors: Record<'minVariance' | 'maxSharpe' | 'selected', string> = {
-  minVariance: '#7bd1a8',
-  maxSharpe: '#ffd27d',
-  selected: '#ff8fb8',
+  minVariance: '#0f766e',
+  maxSharpe: '#b7791f',
+  selected: '#c2413d',
 };
 
 const chartData = computed<ChartData<'scatter'>>(() => {
@@ -69,8 +69,8 @@ const chartData = computed<ChartData<'scatter'>>(() => {
         type: 'scatter' as const,
         label: 'Random portfolios',
         data: cloudPoints,
-        backgroundColor: 'rgba(120, 168, 255, 0.22)',
-        borderColor: 'rgba(120, 168, 255, 0.35)',
+        backgroundColor: 'rgba(37, 99, 235, 0.16)',
+        borderColor: 'rgba(37, 99, 235, 0.28)',
         pointRadius: 2,
         pointHoverRadius: 4,
         showLine: false,
@@ -79,8 +79,8 @@ const chartData = computed<ChartData<'scatter'>>(() => {
         type: 'scatter' as const,
         label: 'Efficient frontier',
         data: frontierPoints,
-        backgroundColor: '#4a9fff',
-        borderColor: '#4a9fff',
+        backgroundColor: '#2563eb',
+        borderColor: '#2563eb',
         pointRadius: 3,
         pointHoverRadius: 5,
         showLine: true,
@@ -91,8 +91,8 @@ const chartData = computed<ChartData<'scatter'>>(() => {
         type: 'scatter' as const,
         label: 'Individual holdings',
         data: assetPoints,
-        backgroundColor: '#c8d8ef',
-        borderColor: '#c8d8ef',
+        backgroundColor: '#334155',
+        borderColor: '#334155',
         pointRadius: 5,
         pointHoverRadius: 7,
         pointStyle: 'circle',
@@ -111,18 +111,18 @@ const chartOptions = computed<ChartOptions<'scatter'>>(() => ({
       position: 'top',
       align: 'start',
       labels: {
-        color: '#dce8f9',
+        color: '#334155',
         usePointStyle: true,
         boxWidth: 10,
         padding: 14,
       },
     },
     tooltip: {
-      backgroundColor: 'rgba(7, 17, 31, 0.96)',
-      borderColor: 'rgba(146, 174, 221, 0.18)',
+      backgroundColor: 'rgba(23, 32, 51, 0.96)',
+      borderColor: 'rgba(203, 213, 225, 0.45)',
       borderWidth: 1,
-      titleColor: '#eff5ff',
-      bodyColor: '#dce8f9',
+      titleColor: '#ffffff',
+      bodyColor: '#e2e8f0',
       padding: 12,
       callbacks: {
         title: (items) => {
@@ -146,11 +146,11 @@ const chartOptions = computed<ChartOptions<'scatter'>>(() => ({
       title: {
         display: true,
         text: 'Annualized volatility (%)',
-        color: '#9fb0c8',
+        color: '#64748b',
       },
-      grid: { color: 'rgba(146, 174, 221, 0.12)' },
+      grid: { color: 'rgba(203, 213, 225, 0.62)' },
       ticks: {
-        color: '#9fb0c8',
+        color: '#64748b',
         callback: (value) => `${Number(value).toFixed(1)}%`,
       },
     },
@@ -159,11 +159,11 @@ const chartOptions = computed<ChartOptions<'scatter'>>(() => ({
       title: {
         display: true,
         text: 'Annualized expected return (%)',
-        color: '#9fb0c8',
+        color: '#64748b',
       },
-      grid: { color: 'rgba(146, 174, 221, 0.12)' },
+      grid: { color: 'rgba(203, 213, 225, 0.62)' },
       ticks: {
-        color: '#9fb0c8',
+        color: '#64748b',
         callback: (value) => `${Number(value).toFixed(1)}%`,
       },
     },

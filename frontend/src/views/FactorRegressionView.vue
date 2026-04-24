@@ -9,6 +9,7 @@ import { listSavedPortfolios, resolveSelectedPortfolioId } from '../lib/savedPor
 import type {
   BacktestRebalanceMode,
   FactorColumnKey,
+  FactorAttributionTerm,
   FactorFrequency,
   FactorRegressionCoefficient,
   FactorRequest,
@@ -53,13 +54,13 @@ type HighlightChip = {
 
 const route = useRoute();
 const rebalanceOptions: Array<{ value: BacktestRebalanceMode; label: string }> = [
-  { value: 'none', label: 'No rebalance' },
+  { value: 'none', label: 'No rebalancing' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
   { value: 'annual', label: 'Annual' },
 ];
 const regressionMethodLabel = 'OLS';
-const DEFAULT_MAX_START_DATE = '2018-01-01';
+const MAX_HISTORY_START_DATE = '1900-01-01';
 
 const FACTOR_DISPLAY_NAMES: Record<FactorColumnKey, string> = {
   marketExcess: 'MKT-RF',
@@ -100,6 +101,10 @@ const FREQUENCY_META: Record<FactorFrequency, { periodLabel: string; periodLabel
 const integerFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 0,
 });
+const monthYearFormatter = new Intl.DateTimeFormat(undefined, {
+  month: 'short',
+  year: 'numeric',
+});
 
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -124,7 +129,7 @@ function getPresetRange(key: DatePresetKey, anchorDate: string): { startDate: st
     case 'tenYears':
       return { startDate: subtractYears(anchorDate, 10), endDate: anchorDate };
     case 'max':
-      return { startDate: DEFAULT_MAX_START_DATE, endDate: anchorDate };
+      return { startDate: MAX_HISTORY_START_DATE, endDate: anchorDate };
   }
 }
 
@@ -152,6 +157,31 @@ function formatCount(value: number | null): string {
 
 function formatWindow(startDate: string, endDate: string): string {
   return `${startDate} to ${endDate}`;
+}
+
+function formatMonthYear(value: string): string {
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : monthYearFormatter.format(date);
+}
+
+function getAttributionTermKind(term: FactorAttributionTerm): string {
+  return term.name === 'Alpha' ? 'Residual + risk-free' : 'Selected factor';
+}
+
+function getContributionBarWidth(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return '0%';
+  }
+
+  return `${Math.min(Math.abs(value), 100).toFixed(2)}%`;
+}
+
+function getContributionBarClass(value: number | null): string {
+  if (value === null || value === 0) {
+    return 'factor-bar-neutral';
+  }
+
+  return value > 0 ? 'factor-bar-positive' : 'factor-bar-negative';
 }
 
 function getValueTone(value: number | null): ValueTone {
@@ -243,7 +273,7 @@ function getCoefficientDisplayName(row: FactorRegressionCoefficient): string {
     return row.name;
   }
   const meta = resultFrequencyMeta.value;
-  return meta ? `Alpha (${meta.periodLabel}ly)` : 'Alpha';
+  return meta ? `Alpha (${meta.periodSuffix})` : 'Alpha';
 }
 
 const todayIso = toIsoDate(new Date());
@@ -303,7 +333,7 @@ const selectedPortfolio = computed(() =>
 );
 const totalWeight = computed(() => selectedPortfolio.value ? sumAllocationWeights(selectedPortfolio.value.assets) : 0);
 const resultRebalanceLabel = computed(() => (
-  rebalanceOptions.find((option) => option.value === result.value?.rebalanceMode)?.label ?? 'No rebalance'
+  rebalanceOptions.find((option) => option.value === result.value?.rebalanceMode)?.label ?? 'No rebalancing'
 ));
 const runDisabled = computed(() => Boolean(formError.value) || loading.value);
 const requestedWindowChanged = computed(() => (
@@ -313,7 +343,7 @@ const requestedWindowChanged = computed(() => (
 
 const formError = computed(() => {
   if (!selectedPortfolio.value) {
-    return 'Create or select a saved portfolio first.';
+    return 'Create or select a portfolio first.';
   }
 
   const allocationMessage = getAllocationValidationMessage(selectedPortfolio.value.assets);
@@ -475,7 +505,7 @@ async function loadPortfolios() {
     portfolios.value = await listSavedPortfolios();
     selectedPortfolioId.value = resolveSelectedPortfolioId(portfolios.value, route.query, selectedPortfolioId.value);
   } catch (requestError) {
-    error.value = requestError instanceof Error ? requestError.message : 'Unable to load saved portfolios';
+    error.value = requestError instanceof Error ? requestError.message : 'Unable to load portfolios';
   }
 }
 
@@ -496,7 +526,7 @@ async function runAnalysis() {
   const validationMessage = formError.value;
 
   if (validationMessage || !selectedPortfolio.value) {
-    error.value = validationMessage || 'Select a saved portfolio first.';
+    error.value = validationMessage || 'Select a portfolio first.';
     return;
   }
 
@@ -535,7 +565,7 @@ void loadPortfolios();
       <div>
         <h2>Factor regression</h2>
         <p class="muted">
-          Run an OLS factor regression on a saved portfolio using stored market prices and imported Ken French factor returns. Choose the factor frequency (daily, weekly, or monthly) and the exact mix of factors to regress against.
+          Select a portfolio, factor set, frequency, date range, and rebalancing.
         </p>
       </div>
     </div>
@@ -544,7 +574,7 @@ void loadPortfolios();
       <form class="panel backtest-form-panel" @submit.prevent="runAnalysis">
         <div class="backtest-form-header">
           <label>
-            Premade portfolio
+            Portfolio
             <select v-model="selectedPortfolioId">
               <option v-for="portfolio in portfolios" :key="portfolio.id" :value="portfolio.id">
                 {{ portfolio.name }}
@@ -563,7 +593,7 @@ void loadPortfolios();
             </label>
 
             <label>
-              Portfolio rebalance
+              Rebalancing
               <select v-model="rebalanceMode">
                 <option v-for="option in rebalanceOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
@@ -605,14 +635,14 @@ void loadPortfolios();
             </div>
 
             <template v-if="selectedPortfolio">
-              <p class="list-label">Portfolio allocations</p>
+              <p class="list-label">Holdings</p>
               <div>
                 <span v-for="asset in selectedPortfolio.assets" :key="asset.symbol" class="asset-pill">
                   {{ asset.symbol }} <span class="muted">{{ formatPercent(asset.weight, 2) }}</span>
                 </span>
               </div>
               <p class="muted">
-                Benchmark context: {{ selectedPortfolio.benchmark }} | Total weight: {{ formatPercent(totalWeight, 2) }}
+                Benchmark ticker: {{ selectedPortfolio.benchmark }} | Total weight: {{ formatPercent(totalWeight, 2) }}
               </p>
             </template>
           </div>
@@ -663,19 +693,19 @@ void loadPortfolios();
 
         <p v-if="formError && !error" class="muted">{{ formError }}</p>
         <p v-if="!portfolios.length" class="muted">
-          No premade portfolios yet.
-          <RouterLink class="secondary-link inline-link" to="/saved-portfolios">Build one on the saved portfolios page</RouterLink>
+          No portfolios yet.
+          <RouterLink class="secondary-link inline-link" to="/saved-portfolios">Create portfolio</RouterLink>
         </p>
       </form>
 
       <div v-if="error" class="panel backtest-empty-state">
-        <h3>Regression output</h3>
+        <h3>Factor regression output</h3>
         <p class="error">{{ error }}</p>
         <p class="muted">Try a longer date range or make sure the selected holdings and factor data have been imported locally.</p>
       </div>
 
       <div v-else-if="loading" class="panel backtest-empty-state">
-        <h3>Regression output</h3>
+        <h3>Factor regression output</h3>
         <p class="muted">Building the portfolio return series and aligning it with factor data...</p>
       </div>
 
@@ -697,7 +727,7 @@ void loadPortfolios();
             <div>
               <p class="metric-label">Regression overview</p>
               <h3>{{ resultFrequencyLabel }}</h3>
-              <p class="muted">Saved portfolio weights are regressed against the selected Ken French factors at {{ result.frequency }} frequency.</p>
+              <p class="muted">Portfolio weights are regressed against the selected Ken French factors at {{ result.frequency }} frequency.</p>
             </div>
             <div class="backtest-chip-row">
               <span
@@ -738,7 +768,7 @@ void loadPortfolios();
           </div>
 
           <div class="grid-2">
-            <div class="panel backtest-chart-card">
+            <div class="backtest-chart-card">
               <div class="backtest-panel-header">
                 <div>
                   <p class="metric-label">Cumulative return fit</p>
@@ -755,7 +785,7 @@ void loadPortfolios();
               />
             </div>
 
-            <div class="panel backtest-chart-card">
+            <div class="backtest-chart-card">
               <div class="backtest-panel-header">
                 <div>
                   <p class="metric-label">Residuals</p>
@@ -781,7 +811,7 @@ void loadPortfolios();
             </div>
 
             <div class="grid-2">
-              <div class="panel backtest-chart-card">
+              <div class="backtest-chart-card">
                 <div class="backtest-panel-header">
                   <div>
                     <p class="metric-label">Market beta</p>
@@ -796,7 +826,7 @@ void loadPortfolios();
                 />
               </div>
 
-              <div class="panel backtest-chart-card">
+              <div class="backtest-chart-card">
                 <div class="backtest-panel-header">
                   <div>
                     <p class="metric-label">Annualized alpha</p>
@@ -812,7 +842,7 @@ void loadPortfolios();
               </div>
             </div>
 
-            <div class="panel backtest-chart-card">
+            <div class="backtest-chart-card">
               <div class="backtest-panel-header">
                 <div>
                   <p class="metric-label">Fit quality</p>
@@ -837,7 +867,7 @@ void loadPortfolios();
               <h3>Exposure and significance</h3>
             </div>
             <p class="muted">
-              Alpha is the {{ resultFrequencyMeta?.periodLabel ?? 'period' }}ly intercept from the regression; the annualized contribution column scales it by {{ resultFrequencyMeta?.periodsPerYear ?? 252 }} periods per year.
+              Alpha is the selected-frequency intercept from the regression; the annualized contribution column scales it by {{ resultFrequencyMeta?.periodsPerYear ?? 252 }} periods per year.
               Factor rows show unitless exposures (betas) and their annualized contribution uses the average factor return over the window.
             </p>
           </div>
@@ -875,31 +905,101 @@ void loadPortfolios();
         <section class="panel backtest-section">
           <div class="backtest-panel-header">
             <div>
-              <p class="metric-label">Attribution</p>
-              <h3>Average factor return context</h3>
+              <p class="metric-label">Risk and return attribution</p>
+              <h3>Factor based risk and return attribution</h3>
             </div>
-            <p class="muted">This ties each exposure to the average annualized factor return observed during the regression window.</p>
+            <p class="muted">
+              Breaks the portfolio return into selected factor terms. Alpha includes the risk-free return and unexplained residual return.
+            </p>
           </div>
 
-          <div class="backtest-table-wrap">
-            <table class="backtest-table">
-              <thead>
-                <tr>
-                  <th>Factor</th>
-                  <th>Exposure</th>
-                  <th>Avg. factor return</th>
-                  <th>Ann. contribution</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="factor in result.factors" :key="factor.name">
-                  <td>{{ factor.name }}</td>
-                  <td class="numeric-text">{{ formatNumber(factor.exposure, 3, true) }}</td>
-                  <td class="numeric-text">{{ formatPercent(factor.averageFactorReturn, 2, true) }}</td>
-                  <td class="numeric-text">{{ formatPercent(factor.annualizedContribution, 2, true) }}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="factor-attribution-summary">
+            <div class="factor-attribution-stat factor-attribution-window">
+              <p class="metric-label">Window</p>
+              <p class="backtest-overview-value">
+                {{ formatMonthYear(result.riskReturnAttribution.startDate) }} to {{ formatMonthYear(result.riskReturnAttribution.endDate) }}
+              </p>
+              <p class="muted">{{ result.riskReturnAttribution.name }}</p>
+            </div>
+            <div class="factor-attribution-stat">
+              <p class="metric-label">Cumulative return</p>
+              <p class="metric numeric-text" :class="toneClass(getValueTone(result.riskReturnAttribution.cumulativeReturn))">
+                {{ formatPercent(result.riskReturnAttribution.cumulativeReturn, 2, true) }}
+              </p>
+            </div>
+            <div class="factor-attribution-stat">
+              <p class="metric-label">Annualized return</p>
+              <p class="metric numeric-text" :class="toneClass(getValueTone(result.riskReturnAttribution.annualizedReturn))">
+                {{ formatPercent(result.riskReturnAttribution.annualizedReturn, 2, true) }}
+              </p>
+            </div>
+            <div class="factor-attribution-stat">
+              <p class="metric-label">Annualized standard deviation</p>
+              <p class="metric numeric-text">{{ formatPercent(result.riskReturnAttribution.annualizedStandardDeviation, 2) }}</p>
+            </div>
+          </div>
+
+          <div class="factor-attribution-list" role="table" aria-label="Factor based risk and return attribution">
+            <div class="factor-attribution-row factor-attribution-row-header" role="row">
+              <div role="columnheader">Factor</div>
+              <div role="columnheader">Cumulative return</div>
+              <div role="columnheader">Return contribution</div>
+              <div role="columnheader">Risk contribution</div>
+            </div>
+
+            <div
+              v-for="term in result.riskReturnAttribution.terms"
+              :key="term.name"
+              class="factor-attribution-row"
+              role="row"
+            >
+              <div class="factor-attribution-name" role="cell">
+                <strong>{{ term.name }}</strong>
+                <span class="muted">{{ getAttributionTermKind(term) }}</span>
+              </div>
+
+              <div class="factor-attribution-cell" role="cell">
+                <span class="factor-attribution-cell-label">Cumulative return</span>
+                <strong class="numeric-text" :class="toneClass(getValueTone(term.cumulativeReturn))">
+                  {{ formatPercent(term.cumulativeReturn, 2, true) }}
+                </strong>
+                <span class="factor-bar-track" aria-hidden="true">
+                  <span
+                    class="factor-bar-fill"
+                    :class="getContributionBarClass(term.cumulativeReturn)"
+                    :style="{ width: getContributionBarWidth(term.cumulativeReturn) }"
+                  />
+                </span>
+              </div>
+
+              <div class="factor-attribution-cell" role="cell">
+                <span class="factor-attribution-cell-label">Return contribution</span>
+                <strong class="numeric-text" :class="toneClass(getValueTone(term.returnContribution))">
+                  {{ formatPercent(term.returnContribution, 2, true) }}
+                </strong>
+                <span class="factor-bar-track" aria-hidden="true">
+                  <span
+                    class="factor-bar-fill"
+                    :class="getContributionBarClass(term.returnContribution)"
+                    :style="{ width: getContributionBarWidth(term.returnContribution) }"
+                  />
+                </span>
+              </div>
+
+              <div class="factor-attribution-cell" role="cell">
+                <span class="factor-attribution-cell-label">Risk contribution</span>
+                <strong class="numeric-text" :class="toneClass(getValueTone(term.riskContribution))">
+                  {{ formatPercent(term.riskContribution, 2, true) }}
+                </strong>
+                <span class="factor-bar-track" aria-hidden="true">
+                  <span
+                    class="factor-bar-fill"
+                    :class="getContributionBarClass(term.riskContribution)"
+                    :style="{ width: getContributionBarWidth(term.riskContribution) }"
+                  />
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -913,7 +1013,7 @@ void loadPortfolios();
           </div>
 
           <div class="backtest-table-wrap">
-            <table class="backtest-table">
+            <table class="backtest-table backtest-compact-table">
               <thead>
                 <tr>
                   <th>Symbol</th>
@@ -939,8 +1039,8 @@ void loadPortfolios();
       </div>
 
       <div v-else class="panel backtest-empty-state">
-        <h3>Regression output</h3>
-        <p class="muted">Run a regression to see factor exposures, diagnostics, and fit charts for the selected saved portfolio.</p>
+        <h3>Factor regression output</h3>
+        <p class="muted">Results appear after the run completes.</p>
       </div>
     </div>
   </section>

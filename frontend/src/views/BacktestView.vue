@@ -46,12 +46,12 @@ type HighlightChip = {
 const route = useRoute();
 const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 const rebalanceOptions: Array<{ value: BacktestRebalanceMode; label: string }> = [
-  { value: 'none', label: 'No rebalance' },
+  { value: 'none', label: 'No rebalancing' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
   { value: 'annual', label: 'Annual' },
 ];
-const DEFAULT_MAX_START_DATE = '2018-01-01';
+const MAX_HISTORY_START_DATE = '1900-01-01';
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
   style: 'currency',
@@ -86,7 +86,7 @@ function getPresetRange(key: DatePresetKey, anchorDate: string): { startDate: st
     case 'tenYears':
       return { startDate: subtractYears(anchorDate, 10), endDate: anchorDate };
     case 'max':
-      return { startDate: DEFAULT_MAX_START_DATE, endDate: anchorDate };
+      return { startDate: MAX_HISTORY_START_DATE, endDate: anchorDate };
   }
 }
 
@@ -189,7 +189,7 @@ const selectedPortfolio = computed(() =>
 const totalWeight = computed(() => selectedPortfolio.value ? sumAllocationWeights(selectedPortfolio.value.assets) : 0);
 const normalizedBenchmark = computed(() => benchmark.value.trim().toUpperCase());
 const resultRebalanceLabel = computed(() => (
-  rebalanceOptions.find((option) => option.value === result.value?.rebalanceMode)?.label ?? 'No rebalance'
+  rebalanceOptions.find((option) => option.value === result.value?.rebalanceMode)?.label ?? 'No rebalancing'
 ));
 const requestedWindowChanged = computed(() => (
   result.value
@@ -204,7 +204,7 @@ const runDisabled = computed(() => Boolean(formError.value) || loading.value);
 
 const formError = computed(() => {
   if (!selectedPortfolio.value) {
-    return 'Create or select a saved portfolio first.';
+    return 'Create or select a portfolio first.';
   }
 
   const allocationMessage = getAllocationValidationMessage(selectedPortfolio.value.assets);
@@ -417,7 +417,7 @@ async function loadPortfolios() {
     selectedPortfolioId.value = resolveSelectedPortfolioId(portfolios.value, route.query, selectedPortfolioId.value);
     syncBenchmarkFromSelection();
   } catch (requestError) {
-    error.value = requestError instanceof Error ? requestError.message : 'Unable to load saved portfolios';
+    error.value = requestError instanceof Error ? requestError.message : 'Unable to load portfolios';
   }
 }
 
@@ -425,7 +425,7 @@ async function runBacktest() {
   const validationMessage = formError.value;
 
   if (validationMessage || !selectedPortfolio.value) {
-    error.value = validationMessage || 'Select a saved portfolio first.';
+    error.value = validationMessage || 'Select a portfolio first.';
     return;
   }
 
@@ -468,7 +468,7 @@ void loadPortfolios();
     <div class="page-header">
       <div>
         <h2>Backtest portfolio</h2>
-        <p class="muted">Run an interactive backtest with quicker date controls, clearer sections, and more readable performance tables.</p>
+        <p class="muted">Select a portfolio, benchmark ticker, date range, and rebalancing.</p>
       </div>
     </div>
 
@@ -477,13 +477,13 @@ void loadPortfolios();
         <div class="backtest-form-header">
           <div>
             <h3>Run setup</h3>
-            <p class="muted">Choose a saved portfolio, tighten the window, and rerun with a different benchmark or rebalance cadence.</p>
+            <p class="muted">Inputs for the backtest run.</p>
           </div>
         </div>
 
         <div v-if="portfolios.length" class="mode-form-grid">
           <label>
-            Premade portfolio
+            Portfolio
             <select v-model="selectedPortfolioId">
               <option v-for="portfolio in portfolios" :key="portfolio.id" :value="portfolio.id">
                 {{ portfolio.name }}
@@ -491,7 +491,7 @@ void loadPortfolios();
             </select>
           </label>
           <div v-if="selectedPortfolio" class="mode-summary">
-            <p class="list-label">Selected benchmark</p>
+            <p class="list-label">Benchmark ticker</p>
             <p>{{ selectedPortfolio.benchmark }}</p>
             <p class="muted">Holdings: {{ selectedPortfolio.assets.length }} | Total weight: {{ totalWeight.toFixed(2) }}%</p>
           </div>
@@ -499,11 +499,11 @@ void loadPortfolios();
 
         <div class="grid-2">
           <label>
-            Benchmark override
+            Benchmark ticker
             <input v-model="benchmark" type="text" placeholder="SPY" />
           </label>
           <label>
-            Rebalance
+            Rebalancing
             <select v-model="rebalanceMode">
               <option v-for="option in rebalanceOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
@@ -564,8 +564,8 @@ void loadPortfolios();
 
         <p v-if="formError && !error" class="muted">{{ formError }}</p>
         <p v-if="!portfolios.length" class="muted">
-          No premade portfolios yet.
-          <RouterLink class="secondary-link inline-link" to="/saved-portfolios">Build one on the saved portfolios page</RouterLink>
+          No portfolios yet.
+          <RouterLink class="secondary-link inline-link" to="/saved-portfolios">Create portfolio</RouterLink>
         </p>
       </form>
 
@@ -695,7 +695,7 @@ void loadPortfolios();
             </div>
 
             <div class="backtest-table-wrap">
-              <table class="backtest-table">
+              <table class="backtest-table backtest-compact-table">
                 <thead>
                   <tr>
                     <th>Year</th>
@@ -765,7 +765,7 @@ void loadPortfolios();
               <table class="backtest-table">
                 <thead>
                   <tr>
-                    <th>Asset</th>
+                    <th>Holding</th>
                     <th>Target weight</th>
                     <th>Total return</th>
                     <th>CAGR</th>
@@ -805,7 +805,7 @@ void loadPortfolios();
 
         <div v-else class="panel backtest-empty-state">
           <h3>Backtest results</h3>
-          <p class="muted">Run a saved portfolio against stored market data to populate the dashboard with charts, returns, and holding-level stats.</p>
+          <p class="muted">Results appear after the run completes.</p>
         </div>
       </div>
     </div>

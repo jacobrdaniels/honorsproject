@@ -4,7 +4,7 @@ import { RouterLink, useRoute } from 'vue-router';
 
 import OptimizationScatterChart from '../components/OptimizationScatterChart.vue';
 import { postJson } from '../lib/api';
-import { createUniverseText } from '../lib/portfolio';
+import { createOptimizationPortfolioText } from '../lib/portfolio';
 import { listSavedPortfolios, resolveSelectedPortfolioId } from '../lib/savedPortfolio';
 import type {
   OptimizationObjective,
@@ -37,7 +37,7 @@ type SummaryMetric = {
   helper?: string;
 };
 
-const DEFAULT_MAX_START_DATE = '2018-01-01';
+const MAX_HISTORY_START_DATE = '1900-01-01';
 
 const objectiveOptions: ObjectiveOption[] = [
   {
@@ -78,7 +78,7 @@ function getPresetRange(key: DatePresetKey, anchorDate: string): { startDate: st
     case 'tenYears':
       return { startDate: subtractYears(anchorDate, 10), endDate: anchorDate };
     case 'max':
-      return { startDate: DEFAULT_MAX_START_DATE, endDate: anchorDate };
+      return { startDate: MAX_HISTORY_START_DATE, endDate: anchorDate };
   }
 }
 
@@ -169,11 +169,11 @@ const activeObjective = computed(() => (
 
 const formError = computed(() => {
   if (!selectedPortfolio.value) {
-    return 'Create or select a saved portfolio to use as the universe.';
+    return 'Create or select a portfolio first.';
   }
 
   if (selectedPortfolio.value.assets.length < 2) {
-    return 'The selected universe must have at least two holdings.';
+    return 'The selected portfolio must have at least two holdings.';
   }
 
   if (!startDate.value || !endDate.value) {
@@ -320,7 +320,7 @@ async function loadPortfolios() {
     portfolios.value = await listSavedPortfolios();
     selectedPortfolioId.value = resolveSelectedPortfolioId(portfolios.value, route.query, selectedPortfolioId.value);
   } catch (requestError) {
-    error.value = requestError instanceof Error ? requestError.message : 'Unable to load saved portfolios';
+    error.value = requestError instanceof Error ? requestError.message : 'Unable to load portfolios';
   }
 }
 
@@ -339,12 +339,12 @@ function resetWindow() {
 
 async function runOptimization() {
   if (formError.value || !selectedPortfolio.value) {
-    error.value = formError.value || 'Select a saved portfolio first.';
+    error.value = formError.value || 'Select a portfolio first.';
     return;
   }
 
   const payload: OptimizationRequest = {
-    universe: createUniverseText(selectedPortfolio.value),
+    universe: createOptimizationPortfolioText(selectedPortfolio.value),
     startDate: startDate.value,
     endDate: endDate.value,
     objective: objective.value,
@@ -384,8 +384,7 @@ void loadPortfolios();
       <div>
         <h2>Portfolio optimization</h2>
         <p class="muted">
-          Use a saved portfolio as the asset universe, then explore the long-only efficient frontier and pick the
-          optimal mix for your objective. Mean returns and covariances come from stored adjusted-close history.
+          Select a portfolio, objective, date range, and risk-free rate input.
         </p>
       </div>
     </div>
@@ -394,7 +393,7 @@ void loadPortfolios();
       <form class="panel backtest-form-panel" @submit.prevent="runOptimization">
         <div class="backtest-form-header">
           <label>
-            Universe (saved portfolio)
+            Portfolio
             <select v-model="selectedPortfolioId">
               <option v-for="portfolio in portfolios" :key="portfolio.id" :value="portfolio.id">
                 {{ portfolio.name }}
@@ -424,15 +423,14 @@ void loadPortfolios();
           </label>
 
           <div v-if="selectedPortfolio" class="mode-summary">
-            <p class="list-label">Universe tickers</p>
+            <p class="list-label">Portfolio tickers</p>
             <div>
               <span v-for="asset in selectedPortfolio.assets" :key="asset.symbol" class="asset-pill">
                 {{ asset.symbol }}
               </span>
             </div>
             <p class="muted">
-              The saved weights are ignored here — only the tickers define the universe.
-              The optimizer will choose weights that sum to 100% with no shorting.
+              The optimizer uses these tickers and solves a new long-only allocation.
             </p>
           </div>
 
@@ -480,22 +478,22 @@ void loadPortfolios();
 
         <p v-if="formError && !error" class="muted">{{ formError }}</p>
         <p v-if="!portfolios.length" class="muted">
-          No saved portfolios yet.
-          <RouterLink class="secondary-link inline-link" to="/saved-portfolios">Build one on the saved portfolios page</RouterLink>
+          No portfolios yet.
+          <RouterLink class="secondary-link inline-link" to="/saved-portfolios">Create portfolio</RouterLink>
         </p>
       </form>
 
       <div v-if="error" class="panel backtest-empty-state">
-        <h3>Optimization output</h3>
+        <h3>Portfolio optimization output</h3>
         <p class="error">{{ error }}</p>
         <p class="muted">
-          Make sure every ticker in the universe has stored price history for the selected window. Run
+          Make sure every portfolio ticker has stored price history for the selected window. Run
           <code class="inline-code">npm run market:import --workspace backend -- TICKER ...</code> if needed.
         </p>
       </div>
 
       <div v-else-if="loading" class="panel backtest-empty-state">
-        <h3>Optimization output</h3>
+        <h3>Portfolio optimization output</h3>
         <p class="muted">Estimating mean returns and covariance, then sampling the long-only simplex...</p>
       </div>
 
@@ -553,7 +551,7 @@ void loadPortfolios();
             <p class="muted">Weights sum to 100% and are clipped to greater than or equal to 0% (long-only).</p>
           </div>
           <div class="backtest-table-wrap">
-            <table class="backtest-table">
+            <table class="backtest-table backtest-compact-table">
               <thead>
                 <tr>
                   <th>Symbol</th>
@@ -615,13 +613,13 @@ void loadPortfolios();
         <section class="panel backtest-section">
           <div class="backtest-panel-header">
             <div>
-              <p class="metric-label">Universe context</p>
-              <h3>Per-asset annualized statistics</h3>
+              <p class="metric-label">Portfolio context</p>
+              <h3>Per-holding annualized statistics</h3>
             </div>
             <p class="muted">Raw inputs to the optimizer: arithmetic mean return times 252 and daily standard deviation times the square root of 252.</p>
           </div>
           <div class="backtest-table-wrap">
-            <table class="backtest-table">
+            <table class="backtest-table backtest-compact-table">
               <thead>
                 <tr>
                   <th>Symbol</th>
@@ -649,8 +647,8 @@ void loadPortfolios();
       </div>
 
       <div v-else class="panel backtest-empty-state">
-        <h3>Optimization output</h3>
-        <p class="muted">Run the optimizer to see the efficient frontier, min-variance, max-Sharpe, and your selected portfolio.</p>
+        <h3>Portfolio optimization output</h3>
+        <p class="muted">Results appear after the run completes.</p>
       </div>
     </div>
   </section>

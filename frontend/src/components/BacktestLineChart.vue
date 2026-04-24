@@ -72,8 +72,8 @@ const chartData = computed<ChartData<'line'>>(() => ({
     {
       label: props.portfolioLabel,
       data: props.portfolioValues,
-      borderColor: '#78a8ff',
-      backgroundColor: 'rgba(120, 168, 255, 0.12)',
+      borderColor: '#2563eb',
+      backgroundColor: 'rgba(37, 99, 235, 0.1)',
       fill: false,
       tension: 0.24,
       pointRadius: 0,
@@ -86,8 +86,8 @@ const chartData = computed<ChartData<'line'>>(() => ({
       ? [{
         label: props.benchmarkLabel,
         data: props.benchmarkValues,
-        borderColor: '#9a86ff',
-        backgroundColor: 'rgba(154, 134, 255, 0.1)',
+        borderColor: '#0f766e',
+        backgroundColor: 'rgba(15, 118, 110, 0.1)',
         fill: false,
         tension: 0.24,
         pointRadius: 0,
@@ -112,7 +112,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
       position: 'top',
       align: 'start',
       labels: {
-        color: '#dce8f9',
+        color: '#334155',
         usePointStyle: true,
         pointStyle: 'line',
         boxWidth: 18,
@@ -121,11 +121,11 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
       },
     },
     tooltip: {
-      backgroundColor: 'rgba(7, 17, 31, 0.96)',
-      borderColor: 'rgba(146, 174, 221, 0.18)',
+      backgroundColor: 'rgba(23, 32, 51, 0.96)',
+      borderColor: 'rgba(203, 213, 225, 0.45)',
       borderWidth: 1,
-      titleColor: '#eff5ff',
-      bodyColor: '#dce8f9',
+      titleColor: '#ffffff',
+      bodyColor: '#e2e8f0',
       padding: 12,
       callbacks: {
         title: (items) => props.labels[items[0]?.dataIndex ?? 0] ?? '',
@@ -142,7 +142,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
         display: false,
       },
       ticks: {
-        color: '#9fb0c8',
+        color: '#64748b',
         maxTicksLimit: 6,
         autoSkip: true,
         callback: (_, index) => formatAxisLabel(props.labels[index] ?? ''),
@@ -150,10 +150,10 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
     },
     y: {
       grid: {
-        color: 'rgba(146, 174, 221, 0.12)',
+        color: 'rgba(203, 213, 225, 0.62)',
       },
       ticks: {
-        color: '#9fb0c8',
+        color: '#64748b',
         callback: (value) => formatChartValue(Number(value), props.valueKind),
       },
     },

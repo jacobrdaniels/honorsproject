@@ -192,6 +192,23 @@ export type FactorRegressionRollingPoint = {
   rSquared: number | null;
 };
 
+export type FactorAttributionTerm = {
+  name: string;
+  cumulativeReturn: number | null;
+  returnContribution: number | null;
+  riskContribution: number | null;
+};
+
+export type FactorRiskReturnAttribution = {
+  name: string;
+  startDate: string;
+  endDate: string;
+  cumulativeReturn: number;
+  annualizedReturn: number;
+  annualizedStandardDeviation: number;
+  terms: FactorAttributionTerm[];
+};
+
 export type FactorResponse = {
   regressionMethod: FactorRegressionMethod;
   frequency: FactorFrequency;
@@ -211,6 +228,7 @@ export type FactorResponse = {
   }>;
   series: FactorRegressionSeriesPoint[];
   rolling: FactorRegressionRollingPoint[];
+  riskReturnAttribution: FactorRiskReturnAttribution;
   coverage: FactorRegressionCoverage;
   notes: string[];
 };

@@ -10,6 +10,7 @@ import type {
   FactorRegressionRollingPoint,
   FactorRequest,
   FactorResponse,
+  FactorRiskReturnAttribution,
 } from '../types';
 import { parseValidatedAllocationString } from './portfolioInput';
 
@@ -72,6 +73,14 @@ export const FACTOR_COLUMN_NAMES: Record<FactorColumnKey, string> = {
 };
 
 const FACTOR_COLUMN_ORDER: FactorColumnKey[] = ['marketExcess', 'smb', 'hml', 'momentum', 'rmw', 'cma'];
+const ATTRIBUTION_TERM_NAMES: Record<FactorColumnKey, string> = {
+  marketExcess: 'Market',
+  smb: 'SMB',
+  hml: 'HML',
+  momentum: 'MOM',
+  rmw: 'RMW',
+  cma: 'CMA',
+};
 
 export const FREQUENCY_CONFIG: Record<FactorFrequency, FrequencyConfig> = {
   daily: {
@@ -341,6 +350,16 @@ function calculateVariance(values: number[], mean: number): number {
   return values.reduce((total, value) => total + (value - mean) ** 2, 0) / values.length;
 }
 
+function calculateCovariance(left: number[], right: number[], leftMean: number, rightMean: number): number {
+  if (left.length === 0 || left.length !== right.length) {
+    return 0;
+  }
+
+  return left.reduce((total, value, index) => (
+    total + ((value - leftMean) * ((right[index] ?? 0) - rightMean))
+  ), 0) / left.length;
+}
+
 function calculateAnnualizedVolatility(values: number[], periodsPerYear: number): number {
   if (values.length === 0) {
     return 0;
@@ -368,6 +387,10 @@ function calculateCagrFromReturns(points: ReturnPoint[], periodsPerYear: number)
   }
 
   return ((cumulativeGrowth ** (1 / elapsedYears)) - 1) * 100;
+}
+
+function calculateCumulativeReturn(values: number[]): number {
+  return values.reduce((growth, value) => growth * (1 + value), 1) - 1;
 }
 
 function transposeMatrix(matrix: number[][]): number[][] {
@@ -674,6 +697,96 @@ function buildCoefficientRows(
   return rows;
 }
 
+type AttributionTermSeries = {
+  name: string;
+  returns: number[];
+};
+
+function buildAttributionTermSeries(
+  observations: AlignedObservation[],
+  factorDefinition: FactorModelDefinition,
+  regression: RegressionResult,
+): AttributionTermSeries[] {
+  const factorTerms = factorDefinition.map((factor, factorIndex) => ({
+    name: ATTRIBUTION_TERM_NAMES[factor.key],
+    returns: observations.map((observation) => (
+      (regression.coefficients[factorIndex + 1] ?? 0) * (observation.selectedFactorValues[factorIndex] ?? 0)
+    )),
+  }));
+
+  const alpha = regression.coefficients[0] ?? 0;
+  const alphaTerm: AttributionTermSeries = {
+    name: 'Alpha',
+    returns: observations.map((observation, index) => (
+      observation.riskFree + alpha + (regression.residuals[index] ?? 0)
+    )),
+  };
+
+  return [...factorTerms, alphaTerm];
+}
+
+function calculateCompoundedTermContributions(
+  termSeries: AttributionTermSeries[],
+  portfolioReturns: number[],
+): Map<string, number> {
+  const cumulativeContributions = new Map(termSeries.map((term) => [term.name, 0]));
+  let portfolioValue = 1;
+
+  for (let index = 0; index < portfolioReturns.length; index += 1) {
+    for (const term of termSeries) {
+      const current = cumulativeContributions.get(term.name) ?? 0;
+      cumulativeContributions.set(term.name, current + (portfolioValue * (term.returns[index] ?? 0)));
+    }
+
+    portfolioValue *= 1 + (portfolioReturns[index] ?? 0);
+  }
+
+  return cumulativeContributions;
+}
+
+function buildRiskReturnAttribution(
+  observations: AlignedObservation[],
+  factorDefinition: FactorModelDefinition,
+  regression: RegressionResult,
+  periodsPerYear: number,
+): FactorRiskReturnAttribution {
+  const portfolioReturns = observations.map((observation) => observation.portfolioReturn);
+  const portfolioReturnPoints = observations.map((observation) => ({
+    period: observation.period,
+    value: observation.portfolioReturn,
+  }));
+  const cumulativeReturn = calculateCumulativeReturn(portfolioReturns);
+  const termSeries = buildAttributionTermSeries(observations, factorDefinition, regression);
+  const termCumulativeContributions = calculateCompoundedTermContributions(termSeries, portfolioReturns);
+  const portfolioMean = calculateMean(portfolioReturns);
+  const portfolioVariance = calculateVariance(portfolioReturns, portfolioMean);
+
+  return {
+    name: 'Portfolio',
+    startDate: observations[0]?.period ?? '',
+    endDate: observations[observations.length - 1]?.period ?? '',
+    cumulativeReturn: round(cumulativeReturn * 100, 2),
+    annualizedReturn: round(calculateCagrFromReturns(portfolioReturnPoints, periodsPerYear), 2),
+    annualizedStandardDeviation: round(calculateAnnualizedVolatility(portfolioReturns, periodsPerYear), 2),
+    terms: termSeries.map((term) => {
+      const cumulativeContribution = termCumulativeContributions.get(term.name) ?? 0;
+      const termMean = calculateMean(term.returns);
+      const covariance = calculateCovariance(term.returns, portfolioReturns, termMean, portfolioMean);
+
+      return {
+        name: term.name,
+        cumulativeReturn: round(cumulativeContribution * 100, 2),
+        returnContribution: Math.abs(cumulativeReturn) < 1e-12
+          ? null
+          : round((cumulativeContribution / cumulativeReturn) * 100, 2),
+        riskContribution: portfolioVariance === 0
+          ? null
+          : round((covariance / portfolioVariance) * 100, 2),
+      };
+    }),
+  };
+}
+
 function buildSeries(observations: AlignedObservation[], regression: RegressionResult): FactorResponse['series'] {
   let cumulativePortfolio = 1;
   let cumulativeFitted = 1;
@@ -884,6 +997,12 @@ export function buildFactorRegressionResponseFromStoredRows(
       : 'partial';
   const portfolioTotalReturns = observations.map((observation) => observation.portfolioReturn);
   const residuals = regression.residuals;
+  const riskReturnAttribution = buildRiskReturnAttribution(
+    observations,
+    factorDefinition,
+    regression,
+    config.periodsPerYear,
+  );
 
   return {
     regressionMethod: input.method,
@@ -915,9 +1034,10 @@ export function buildFactorRegressionResponseFromStoredRows(
         exposure: row.exposure,
         annualizedContribution: row.annualizedContribution,
         averageFactorReturn: row.averageFactorReturn,
-      })),
+    })),
     series: buildSeries(observations, regression),
     rolling,
+    riskReturnAttribution,
     coverage: {
       requestedStartDate: input.startDate,
       requestedEndDate: input.endDate,

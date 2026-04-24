@@ -48,7 +48,7 @@ const formError = computed(() => {
   const filledRows = assetRows.value.filter((row) => row.symbol.trim() || row.weight.trim());
 
   if (filledRows.length === 0) {
-    return 'Enter at least one asset ticker and weight.';
+    return 'Enter at least one holding ticker and weight.';
   }
 
   const incompleteOrInvalidRows = filledRows.filter((row) => {
@@ -58,7 +58,7 @@ const formError = computed(() => {
   });
 
   if (incompleteOrInvalidRows.length > 0) {
-    return 'Each asset row needs a ticker and numeric weight.';
+    return 'Each holding row needs a ticker and numeric weight.';
   }
 
   const allocationMessage = getAllocationValidationMessage(parsedAssets.value);
@@ -171,8 +171,8 @@ onMounted(loadPortfolios);
   <section class="page">
     <div class="page-header">
       <div>
-        <h2>Portfolio Model Configuration</h2>
-        <p class="muted">Design premade portfolios here, keep the benchmark as a ticker, and reuse those saved models in every analysis mode.</p>
+        <h2>Portfolios</h2>
+        <p class="muted">Create portfolios with ticker weights, notes, and a benchmark ticker.</p>
       </div>
       <div class="button-row">
         <button class="secondary-button" type="button" @click="loadPortfolios">Refresh</button>
@@ -208,12 +208,12 @@ onMounted(loadPortfolios);
 
         <div class="builder-section">
           <div class="assets-header">
-            <p class="list-label">Portfolio assets</p>
-            <p class="muted">All analysis modes reuse these saved allocations, so there is one place to build the portfolio and benchmark setup.</p>
+            <p class="list-label">Holdings</p>
+            <p class="muted">Enter tickers and target weights. Total weight must equal 100%.</p>
           </div>
           <div class="asset-grid">
             <div class="asset-grid-row asset-grid-header">
-              <div>Asset</div>
+              <div>Holding</div>
               <div>Ticker</div>
               <div>Weight</div>
               <div>%</div>
@@ -226,7 +226,7 @@ onMounted(loadPortfolios);
             </div>
             <div class="asset-grid-row asset-grid-total">
               <div>Total</div>
-              <div class="muted">Saved portfolio</div>
+              <div class="muted">Portfolio</div>
               <div :class="{ success: totalIsBalanced, error: !totalIsBalanced && totalWeight > 0 }">
                 {{ totalWeight.toFixed(2) }}
               </div>
@@ -254,8 +254,8 @@ onMounted(loadPortfolios);
       </form>
 
       <div class="panel library-panel">
-        <h3>Portfolio library</h3>
-        <p class="muted">All analysis modes should be launched from one of these premade portfolios.</p>
+        <h3>Portfolios</h3>
+        <p class="muted">Portfolios available for analysis runs.</p>
         <p v-if="loading" class="muted">Loading portfolios...</p>
         <ul v-else-if="portfolios.length" class="list">
           <li v-for="portfolio in portfolios" :key="portfolio.id" class="portfolio-card">
@@ -281,13 +281,13 @@ onMounted(loadPortfolios);
               </button>
             </div>
             <div class="button-row">
-              <RouterLink class="secondary-link" :to="{ path: '/backtest', query: { portfolioId: portfolio.id } }">Analyze in backtest</RouterLink>
-              <RouterLink class="secondary-link" :to="{ path: '/factor-regression', query: { portfolioId: portfolio.id } }">Analyze in factors</RouterLink>
-              <RouterLink class="secondary-link" :to="{ path: '/optimization', query: { portfolioId: portfolio.id } }">Analyze in optimization</RouterLink>
+              <RouterLink class="secondary-link" :to="{ path: '/backtest', query: { portfolioId: portfolio.id } }">Backtest</RouterLink>
+              <RouterLink class="secondary-link" :to="{ path: '/factor-regression', query: { portfolioId: portfolio.id } }">Factor regression</RouterLink>
+              <RouterLink class="secondary-link" :to="{ path: '/optimization', query: { portfolioId: portfolio.id } }">Portfolio optimization</RouterLink>
             </div>
           </li>
         </ul>
-        <p v-else class="muted">No saved portfolios yet. Create the first one in the builder on this page.</p>
+        <p v-else class="muted">No portfolios yet. Create the first one here.</p>
       </div>
     </div>
   </section>

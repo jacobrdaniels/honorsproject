@@ -52,7 +52,7 @@ function formatWeightInput(weight: number): string {
 
 export function createPortfolioAssetRows(count = PORTFOLIO_ASSET_ROW_COUNT): PortfolioAssetRow[] {
   return Array.from({ length: count }, (_, index) => ({
-    label: `Asset ${index + 1}`,
+    label: `Holding ${index + 1}`,
     symbol: '',
     weight: '',
   }));
@@ -66,7 +66,7 @@ export function portfolioToAssetRows(
 
   portfolio.assets.slice(0, count).forEach((asset, index) => {
     rows[index] = {
-      label: `Asset ${index + 1}`,
+      label: `Holding ${index + 1}`,
       symbol: asset.symbol,
       weight: formatWeightInput(asset.weight),
     };
@@ -99,7 +99,7 @@ export function sumAllocationWeights(assets: AssetAllocation[]): number {
 
 export function getAllocationValidationMessage(assets: AssetAllocation[]): string {
   if (assets.length === 0) {
-    return 'Enter at least one asset ticker and weight.';
+    return 'Enter at least one holding ticker and weight.';
   }
 
   const invalidWeightSymbols = assets
@@ -127,7 +127,7 @@ export function getPortfolioTickers(portfolio: SavedPortfolio): string {
   return portfolio.assets.map((asset) => asset.symbol).join(', ');
 }
 
-export function createUniverseText(portfolio: SavedPortfolio): string {
+export function createOptimizationPortfolioText(portfolio: SavedPortfolio): string {
   return portfolio.assets.map((asset) => asset.symbol).join(', ');
 }
 

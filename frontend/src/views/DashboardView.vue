@@ -1,67 +1,103 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
-const featureCards = [
+import { listSavedPortfolios } from '../lib/savedPortfolio';
+import type { SavedPortfolio } from '../types';
+
+const analysisTools = [
   {
-    title: 'Backtest saved models',
-    description: 'Run historical performance analysis using one of your premade portfolios and its saved benchmark ticker.',
+    label: 'Backtest',
+    meta: 'Compare returns, drawdowns, yearly performance, and holdings.',
     to: '/backtest',
-    action: 'Open backtest',
   },
   {
-    title: 'Run factor regression',
-    description: 'Analyze factor exposures from a premade portfolio without rebuilding the ticker list in each mode.',
+    label: 'Factor regression',
+    meta: 'Estimate alpha, beta, factor exposure, and fit quality.',
     to: '/factor-regression',
-    action: 'Open regression',
   },
   {
-    title: 'Optimize and explore the frontier',
-    description: 'Use a saved portfolio as the universe, then plot the long-only efficient frontier and pick the max-Sharpe, min-variance, or target-return mix.',
+    label: 'Portfolio optimization',
+    meta: 'Solve long-only weights from the tickers in a portfolio.',
     to: '/optimization',
-    action: 'Open optimizer',
-  },
-  {
-    title: 'Build saved portfolios',
-    description: 'Use the portfolio builder page to define benchmark tickers and reusable allocations for every mode.',
-    to: '/saved-portfolios',
-    action: 'Open portfolio builder',
-  },
-  {
-    title: 'One source of truth',
-    description: 'Portfolio design happens in one place, while every analysis page stays focused on mode-specific settings.',
-    to: '/saved-portfolios',
-    action: 'Start with builder',
   },
 ];
+
+const portfolios = ref<SavedPortfolio[]>([]);
+const loading = ref(true);
+const error = ref('');
+
+const visiblePortfolios = computed(() => portfolios.value.slice(0, 4));
+const hasPortfolios = computed(() => portfolios.value.length > 0);
+
+async function loadPortfolios() {
+  loading.value = true;
+  error.value = '';
+
+  try {
+    portfolios.value = await listSavedPortfolios();
+  } catch (requestError) {
+    error.value = requestError instanceof Error ? requestError.message : 'Unable to load portfolios';
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(loadPortfolios);
 </script>
 
 <template>
   <section class="page">
-    <div class="page-header">
+    <section class="dashboard-tools">
       <div>
-        <h2>Project dashboard</h2>
-        <p class="muted">
-          Build a portfolio once on the saved portfolios page, then choose that premade model inside each analysis workflow.
-        </p>
+        <p class="list-label">Analysis tools</p>
+        <h2>Run analysis</h2>
       </div>
-      <div class="panel">
-        <p class="list-label">Workflow</p>
-        <ul class="list">
-          <li>Design a premade portfolio</li>
-          <li>Save its benchmark ticker</li>
-          <li>Select it in backtest</li>
-          <li>Select it in factor regression</li>
-          <li>Select it in optimization</li>
-        </ul>
+      <div class="tool-grid">
+        <RouterLink v-for="tool in analysisTools" :key="tool.label" :to="tool.to" class="tool-link">
+          <h3>{{ tool.label }}</h3>
+          <p class="muted">{{ tool.meta }}</p>
+        </RouterLink>
       </div>
-    </div>
+    </section>
 
-    <div class="grid-3">
-      <RouterLink v-for="card in featureCards" :key="card.title" :to="card.to" class="feature-card feature-link">
-        <h3>{{ card.title }}</h3>
-        <p class="muted">{{ card.description }}</p>
-        <span class="feature-action">{{ card.action }}</span>
-      </RouterLink>
-    </div>
+    <section v-if="loading || error || hasPortfolios" class="panel dashboard-library-panel">
+      <div class="dashboard-section-header">
+        <div>
+          <p class="list-label">Portfolio shortcuts</p>
+          <h3>Portfolios</h3>
+        </div>
+        <div class="button-row">
+          <button class="secondary-button" type="button" @click="loadPortfolios">Refresh</button>
+          <RouterLink class="secondary-link" to="/saved-portfolios">
+            Manage portfolios
+          </RouterLink>
+        </div>
+      </div>
+
+      <p v-if="loading" class="muted">Loading portfolios...</p>
+      <p v-else-if="error" class="error">{{ error }}</p>
+      <div v-else-if="visiblePortfolios.length" class="dashboard-portfolio-list">
+        <div v-for="portfolio in visiblePortfolios" :key="portfolio.id" class="dashboard-portfolio-row">
+          <div>
+            <h3>{{ portfolio.name }}</h3>
+            <p class="muted">
+              {{ portfolio.assets.length }} holdings | Benchmark ticker {{ portfolio.benchmark }}
+            </p>
+          </div>
+          <div class="button-row">
+            <RouterLink class="secondary-link" :to="{ path: '/backtest', query: { portfolioId: portfolio.id } }">
+              Backtest
+            </RouterLink>
+            <RouterLink class="secondary-link" :to="{ path: '/factor-regression', query: { portfolioId: portfolio.id } }">
+              Factor regression
+            </RouterLink>
+            <RouterLink class="secondary-link" :to="{ path: '/optimization', query: { portfolioId: portfolio.id } }">
+              Portfolio optimization
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </section>
   </section>
 </template>

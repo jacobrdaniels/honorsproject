@@ -224,6 +224,14 @@ describe('factorRegression', () => {
     expect(response.coverage.factorStatus).toBe('full');
     expect(response.series).toHaveLength(90);
     expect(response.rolling.length).toBeGreaterThan(0);
+    expect(response.riskReturnAttribution.name).toBe('Portfolio');
+    expect(response.riskReturnAttribution.terms.map((term) => term.name)).toEqual(['Market', 'SMB', 'HML', 'MOM', 'Alpha']);
+    expect(response.riskReturnAttribution.cumulativeReturn).toBeCloseTo(
+      response.series[response.series.length - 1]?.cumulativePortfolioReturn ?? 0,
+      2,
+    );
+    expect(response.riskReturnAttribution.terms.reduce((total, term) => total + (term.returnContribution ?? 0), 0)).toBeCloseTo(100, 1);
+    expect(response.riskReturnAttribution.terms.reduce((total, term) => total + (term.riskContribution ?? 0), 0)).toBeCloseTo(100, 1);
   });
 
   it('runs with a user-selected subset of factors and only reports those in the output', () => {

@@ -12,9 +12,9 @@ const healthError = ref('');
 const navigation = [
   { to: '/', label: 'Dashboard' },
   { to: '/backtest', label: 'Backtest' },
-  { to: '/factor-regression', label: 'Factor Regression' },
-  { to: '/optimization', label: 'Optimization' },
-  { to: '/saved-portfolios', label: 'Saved Portfolios' },
+  { to: '/factor-regression', label: 'Factor regression' },
+  { to: '/optimization', label: 'Portfolio optimization' },
+  { to: '/saved-portfolios', label: 'Portfolios' },
 ] as const;
 
 const activePath = computed(() => route.path);
@@ -31,28 +31,35 @@ onMounted(async () => {
 <template>
   <div class="app-shell">
     <header class="hero">
-      <div>
-        <p class="eyebrow">Honors Project</p>
-        <h1>Portfolio Analytics Platform</h1>
-        <p class="hero-copy">
-          Build premade portfolios once, then run each analysis mode with its own settings against that saved model.
-        </p>
+      <div class="brand-block">
+        <div class="brand-mark">PA</div>
+        <div>
+          <p class="eyebrow">Portfolio Analytics</p>
+          <h1>Workspace</h1>
+        </div>
       </div>
       <div class="status-card">
-        <p class="status-label">API status</p>
-        <strong v-if="health">{{ health.status }}</strong>
-        <strong v-else-if="healthError">offline</strong>
-        <strong v-else>checking...</strong>
+        <div class="status-heading">
+          <p class="status-label">API status</p>
+          <strong
+            class="status-pill"
+            :class="{ 'status-pill-ok': health, 'status-pill-error': healthError }"
+          >
+            <template v-if="health">{{ health.status }}</template>
+            <template v-else-if="healthError">offline</template>
+            <template v-else>checking...</template>
+          </strong>
+        </div>
         <p class="status-copy">
           {{ health?.service ?? (healthError || 'Health endpoint has not responded yet.') }}
         </p>
         <p v-if="health" class="status-copy">
-          Database: {{ health.database.status }} | Checked: {{ new Date(health.checkedAt).toLocaleTimeString() }}
+          Database: {{ health.database.status }} | Checked {{ new Date(health.checkedAt).toLocaleTimeString() }}
         </p>
       </div>
     </header>
 
-    <nav class="nav-grid">
+    <nav class="nav-grid" aria-label="Primary navigation">
       <RouterLink
         v-for="item in navigation"
         :key="item.to"
@@ -64,7 +71,7 @@ onMounted(async () => {
       </RouterLink>
     </nav>
 
-    <main>
+    <main class="workspace">
       <RouterView />
     </main>
   </div>
