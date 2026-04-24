@@ -7,6 +7,7 @@ import {
   listPortfolios,
   updatePortfolio,
 } from '../lib/portfolioStore';
+import { PortfolioInputError } from '../lib/portfolioInput';
 
 const portfoliosRouter = Router();
 
@@ -61,6 +62,11 @@ portfoliosRouter.post('/', async (request, response, next) => {
     const portfolio = await createPortfolio({ name, benchmark, notes, allocations });
     response.status(201).json(portfolio);
   } catch (error) {
+    if (error instanceof PortfolioInputError) {
+      response.status(400).json({ message: error.message });
+      return;
+    }
+
     next(error);
   }
 });
@@ -103,6 +109,11 @@ portfoliosRouter.put('/:portfolioId', async (request, response, next) => {
 
     response.json(portfolio);
   } catch (error) {
+    if (error instanceof PortfolioInputError) {
+      response.status(400).json({ message: error.message });
+      return;
+    }
+
     next(error);
   }
 });

@@ -77,7 +77,7 @@ export type BacktestCoverage = {
   requestedEndDate: string;
   tradingDays: number;
   benchmarkTradingDays: number;
-  benchmarkStatus: 'full' | 'partial' | 'missing';
+  benchmarkStatus: 'full';
   missingSymbols: string[];
 };
 
@@ -108,7 +108,7 @@ export type BacktestResponse = {
   rebalanceMode: BacktestRebalanceMode;
   portfolio: AssetAllocation[];
   summary: BacktestSummary;
-  benchmarkSummary: BacktestSummary | null;
+  benchmarkSummary: BacktestSummary;
   benchmarkRelative: BacktestBenchmarkRelativeMetrics;
   assetBreakdown: BacktestAssetBreakdown[];
   equityCurve: BacktestSeriesPoint[];

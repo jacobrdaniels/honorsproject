@@ -6,7 +6,7 @@ import {
   listPortfolioRecords,
   updatePortfolioRecord,
 } from '../db/portfolioRepository';
-import { parseAllocationString } from './portfolioInput';
+import { parseValidatedAllocationString } from './portfolioInput';
 
 type PortfolioMutationInput = {
   name: string;
@@ -21,11 +21,7 @@ function normalizePortfolioInput(input: PortfolioMutationInput): {
   notes: string;
   assets: AssetAllocation[];
 } {
-  const assets = parseAllocationString(input.allocations);
-
-  if (assets.length === 0) {
-    throw new Error('Enter at least one allocation in the format TICKER:WEIGHT.');
-  }
+  const assets = parseValidatedAllocationString(input.allocations);
 
   return {
     name: input.name.trim(),

@@ -6,6 +6,7 @@ import { deleteJson, getJson, postJson, putJson } from '../lib/api';
 import {
   assetRowsToAllocationText,
   createPortfolioAssetRows,
+  getAllocationValidationMessage,
   parseAllocationText,
   portfolioToAssetRows,
   sumAssetRowWeights,
@@ -44,8 +45,26 @@ const formError = computed(() => {
     return 'Benchmark ticker is required.';
   }
 
-  if (parsedAssets.value.length === 0) {
+  const filledRows = assetRows.value.filter((row) => row.symbol.trim() || row.weight.trim());
+
+  if (filledRows.length === 0) {
     return 'Enter at least one asset ticker and weight.';
+  }
+
+  const incompleteOrInvalidRows = filledRows.filter((row) => {
+    const symbol = row.symbol.trim();
+    const rawWeight = row.weight.trim();
+    return !symbol || !rawWeight || !Number.isFinite(Number(rawWeight));
+  });
+
+  if (incompleteOrInvalidRows.length > 0) {
+    return 'Each asset row needs a ticker and numeric weight.';
+  }
+
+  const allocationMessage = getAllocationValidationMessage(parsedAssets.value);
+
+  if (allocationMessage) {
+    return allocationMessage;
   }
 
   return '';

@@ -4,7 +4,7 @@ import { RouterLink, useRoute } from 'vue-router';
 
 import BacktestLineChart from '../components/BacktestLineChart.vue';
 import { postJson } from '../lib/api';
-import { formatAllocationText, sumAllocationWeights } from '../lib/portfolio';
+import { formatAllocationText, getAllocationValidationMessage, sumAllocationWeights } from '../lib/portfolio';
 import { listSavedPortfolios, resolveSelectedPortfolioId } from '../lib/savedPortfolio';
 import type {
   BacktestRebalanceMode,
@@ -316,8 +316,10 @@ const formError = computed(() => {
     return 'Create or select a saved portfolio first.';
   }
 
-  if (!selectedPortfolio.value.assets.length || totalWeight.value <= 0) {
-    return 'The selected portfolio must include holdings with positive weights.';
+  const allocationMessage = getAllocationValidationMessage(selectedPortfolio.value.assets);
+
+  if (allocationMessage) {
+    return allocationMessage;
   }
 
   if (!startDate.value || !endDate.value) {

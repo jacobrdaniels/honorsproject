@@ -4,7 +4,7 @@ import { RouterLink, useRoute } from 'vue-router';
 
 import BacktestLineChart from '../components/BacktestLineChart.vue';
 import { postJson } from '../lib/api';
-import { formatAllocationText, sumAllocationWeights } from '../lib/portfolio';
+import { formatAllocationText, getAllocationValidationMessage, sumAllocationWeights } from '../lib/portfolio';
 import { listSavedPortfolios, resolveSelectedPortfolioId } from '../lib/savedPortfolio';
 import type { BacktestCoverage, BacktestRebalanceMode, BacktestRequest, BacktestResponse, SavedPortfolio } from '../types';
 
@@ -157,15 +157,8 @@ function getHeatmapClass(value: number | null): string {
 }
 
 function formatCoverageStatus(status: BacktestCoverage['benchmarkStatus']): string {
-  if (status === 'full') {
-    return 'Full coverage';
-  }
-
-  if (status === 'partial') {
-    return 'Partial coverage';
-  }
-
-  return 'Missing coverage';
+  void status;
+  return 'Full coverage';
 }
 
 const todayIso = toIsoDate(new Date());
@@ -203,7 +196,7 @@ const requestedWindowChanged = computed(() => (
   && (result.value.coverage.requestedStartDate !== result.value.startDate || result.value.coverage.requestedEndDate !== result.value.endDate)
 ));
 const benchmarkDifference = computed(() => (
-  result.value?.benchmarkSummary
+  result.value
     ? result.value.summary.totalReturn - result.value.benchmarkSummary.totalReturn
     : null
 ));
@@ -212,6 +205,12 @@ const runDisabled = computed(() => Boolean(formError.value) || loading.value);
 const formError = computed(() => {
   if (!selectedPortfolio.value) {
     return 'Create or select a saved portfolio first.';
+  }
+
+  const allocationMessage = getAllocationValidationMessage(selectedPortfolio.value.assets);
+
+  if (allocationMessage) {
+    return allocationMessage;
   }
 
   if (!startDate.value || !endDate.value) {
@@ -261,7 +260,7 @@ const resultHighlights = computed<HighlightChip[]>(() => {
   return [
     {
       label: formatCoverageStatus(result.value.coverage.benchmarkStatus),
-      tone: result.value.coverage.benchmarkStatus === 'full' ? 'positive' : 'neutral',
+      tone: 'positive',
     },
     {
       label: `${formatCount(result.value.coverage.tradingDays)} aligned days`,
@@ -633,7 +632,7 @@ void loadPortfolios();
             <div class="backtest-section-heading">
               <div>
                 <h3>Charts</h3>
-                <p class="muted">Hover any point for exact values. The benchmark line now breaks cleanly when data is missing.</p>
+                <p class="muted">Hover any point for exact values. The benchmark is required and plotted over the aligned window.</p>
               </div>
             </div>
 

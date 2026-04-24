@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildBacktestResponseFromStoredRows } from './marketDataBacktest';
+import { PortfolioInputError } from './portfolioInput';
 import type { StoredPriceBar } from '../db/marketDataRepository';
 
 function createRow(symbol: string, tradingDay: string, adjustedClose: number): StoredPriceBar {
@@ -250,5 +251,59 @@ describe('marketDataBacktest', () => {
     );
 
     expect(response).toBeNull();
+  });
+
+  it('requires stored benchmark history for the backtest window', () => {
+    const response = buildBacktestResponseFromStoredRows(
+      {
+        allocations: 'AAA:100',
+        benchmark: 'SPY',
+        startDate: '2024-01-02',
+        endDate: '2024-01-05',
+        rebalanceMode: 'none',
+      },
+      createSeries('AAA', [
+        ['2024-01-02', 100],
+        ['2024-01-03', 101],
+        ['2024-01-04', 102],
+      ]),
+    );
+
+    expect(response).toBeNull();
+  });
+
+  it('rejects allocations that are negative or do not add to one hundred percent', () => {
+    const rows = [
+      ...createSeries('AAA', [
+        ['2024-01-02', 100],
+        ['2024-01-03', 101],
+      ]),
+      ...createSeries('SPY', [
+        ['2024-01-02', 100],
+        ['2024-01-03', 101],
+      ]),
+    ];
+
+    expect(() => buildBacktestResponseFromStoredRows(
+      {
+        allocations: 'AAA:80',
+        benchmark: 'SPY',
+        startDate: '2024-01-02',
+        endDate: '2024-01-03',
+        rebalanceMode: 'none',
+      },
+      rows,
+    )).toThrowError(/add to 100/);
+
+    expect(() => buildBacktestResponseFromStoredRows(
+      {
+        allocations: 'AAA:120, BBB:-20',
+        benchmark: 'SPY',
+        startDate: '2024-01-02',
+        endDate: '2024-01-03',
+        rebalanceMode: 'none',
+      },
+      rows,
+    )).toThrowError(PortfolioInputError);
   });
 });

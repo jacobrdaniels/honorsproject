@@ -21,6 +21,7 @@ import {
   PortfolioOptimizationInputError,
 } from '../lib/portfolioOptimization';
 import { buildBacktestResponseFromMarketData } from '../lib/marketDataBacktest';
+import { PortfolioInputError } from '../lib/portfolioInput';
 
 const analysisRouter = Router();
 const factorFrequencies: FactorFrequency[] = ['daily', 'weekly', 'monthly'];
@@ -46,13 +47,20 @@ analysisRouter.post('/backtest', async (request, response, next) => {
 
     if (!payload) {
       response.status(400).json({
-        message: 'Not enough stored market data is available for that portfolio, benchmark, and date range.',
+        message: 'Not enough stored market data is available for every holding, the required benchmark, and that date range.',
       });
       return;
     }
 
     response.json(payload);
   } catch (error) {
+    if (error instanceof PortfolioInputError) {
+      response.status(400).json({
+        message: error.message,
+      });
+      return;
+    }
+
     next(error);
   }
 });
@@ -136,7 +144,7 @@ analysisRouter.post('/factors', async (request, response, next) => {
     const payload: FactorResponse = await buildFactorRegressionResponseFromMarketData(factorInput);
     response.json(payload);
   } catch (error) {
-    if (error instanceof FactorRegressionInputError) {
+    if (error instanceof FactorRegressionInputError || error instanceof PortfolioInputError) {
       response.status(400).json({
         message: error.message,
       });

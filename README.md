@@ -17,7 +17,7 @@ All analysis workflows use stored Yahoo Finance adjusted-close history and Ken F
 
 - `frontend/`: Vue 3 + Vite + TypeScript client
 - `backend/`: Express + TypeScript API
-- `context/`: proposal notes and reference material used to shape the product scope
+- `factordata/`: manifest for the Ken French CSV files used by the factor-data import script
 
 ## Frontend Overview
 
@@ -90,9 +90,9 @@ Then open `http://localhost:5173/`.
 
 ## Environment Files
 
-- Copy `frontend/.env.example` to `frontend/.env.local` if you want to override the API base URL.
-- Copy `backend/.env.example` to `backend/.env.local` if you want to change the API port, CORS origin, or SQLite database location.
-- The backend now loads `backend/.env.local` automatically for local development.
+- Optional frontend settings can go in `frontend/.env.local`; set `VITE_API_BASE_URL` if you want to override the API base URL.
+- Optional backend settings can go in `backend/.env.local`; set `PORT`, `CORS_ORIGIN`, or `DATABASE_URL` if you want to override the API port, allowed frontend origin, or SQLite database location.
+- The backend loads `backend/.env.local` automatically for local development.
 - `MARKETDATA_TICKERS` and `MARKETDATA_START_DATE` let you control the default Yahoo Finance import universe for one-off data loads.
 - Put the Ken French CSV files you want to import in `factordata/` and keep the expected filenames in `factordata/expected-files.txt`.
 
@@ -100,7 +100,7 @@ Then open `http://localhost:5173/`.
 
 1. Save a portfolio on the `Saved Portfolios` page.
 2. Use one of the `Use in ...` buttons to open an analysis page with that saved portfolio preloaded.
-3. Run `npm run market:import --workspace backend -- SPY VTI VXUS BND` once to preload historical daily prices for your demo universe.
+3. Run `npm run market:import --workspace backend -- SPY VTI VXUS BND` once to preload historical daily prices for every holding and the benchmark.
 4. Run the backtest page again to use stored Yahoo Finance price history when those symbols are available.
 
 ## Deployment Notes
@@ -112,6 +112,7 @@ Then open `http://localhost:5173/`.
 ## Current Limitations
 
 - Every analysis depends on locally imported market data and only covers symbols with stored price history.
+- Backtests require stored price history for both the selected holdings and the selected benchmark.
 - Optimization is long-only, fully invested, and uses Monte Carlo sampling on the simplex (no general quadratic-programming solver).
 - Portfolio storage is local SQLite, which is fine for project scope but not yet set up for multi-user production use.
 - There is no authentication yet.

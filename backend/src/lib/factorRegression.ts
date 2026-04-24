@@ -11,7 +11,7 @@ import type {
   FactorRequest,
   FactorResponse,
 } from '../types';
-import { normalizeAllocationWeights, parseAllocationString } from './portfolioInput';
+import { parseValidatedAllocationString } from './portfolioInput';
 
 type PricePoint = {
   period: string;
@@ -141,7 +141,7 @@ function round(value: number, digits = 2): number {
 }
 
 function getNormalizedPortfolio(allocations: string): AssetAllocation[] {
-  return normalizeAllocationWeights(parseAllocationString(allocations));
+  return parseValidatedAllocationString(allocations);
 }
 
 function groupRowsBySymbol(rows: StoredPriceBar[]): Map<string, StoredPriceBar[]> {

@@ -12,7 +12,7 @@ import type {
   BacktestSeriesPoint,
   BacktestSummary,
 } from '../types';
-import { normalizeAllocationWeights, parseAllocationString } from './portfolioInput';
+import { parseValidatedAllocationString } from './portfolioInput';
 
 type PricePoint = {
   period: string;
@@ -29,7 +29,7 @@ function round(value: number): number {
 }
 
 function getNormalizedPortfolio(allocations: string): AssetAllocation[] {
-  return normalizeAllocationWeights(parseAllocationString(allocations));
+  return parseValidatedAllocationString(allocations);
 }
 
 function groupRowsBySymbol(rows: StoredPriceBar[]): Map<string, StoredPriceBar[]> {
@@ -351,22 +351,10 @@ function calculateSharpe(values: PricePoint[]): number {
 
 function buildBenchmarkRelativeMetrics(
   portfolioSummary: BacktestSummary,
-  benchmarkSummary: BacktestSummary | null,
+  benchmarkSummary: BacktestSummary,
   portfolioCurve: PricePoint[],
   benchmarkCurve: NullablePricePoint[],
 ): BacktestBenchmarkRelativeMetrics {
-  if (!benchmarkSummary) {
-    return {
-      excessReturn: null,
-      trackingError: null,
-      informationRatio: null,
-      beta: null,
-      alpha: null,
-      upsideCapture: null,
-      downsideCapture: null,
-    };
-  }
-
   const pairedReturns = getPairedDailyReturns(portfolioCurve, benchmarkCurve);
 
   if (pairedReturns.length < 2) {
@@ -654,13 +642,8 @@ export function buildBacktestResponseFromStoredRows(input: BacktestRequest, rows
   const portfolioMonthlyReturns = buildMonthlyReturnMap(portfolioCurve);
   const benchmarkMonthlyReturns = buildMonthlyReturnMap(benchmarkNonNullCurve);
   const summary = buildSummary(portfolioCurve, portfolioAnnualReturns);
-  const benchmarkSummary = benchmarkNonNullCurve.length >= 2 ? buildSummary(benchmarkNonNullCurve, benchmarkAnnualReturns) : null;
+  const benchmarkSummary = buildSummary(benchmarkNonNullCurve, benchmarkAnnualReturns);
   const benchmarkTradingDays = benchmarkNonNullCurve.length;
-  const benchmarkStatus = benchmarkTradingDays === 0
-    ? 'missing'
-    : benchmarkTradingDays === tradingDays.length
-      ? 'full'
-      : 'partial';
   const notes = [
     'Backtest built from stored Yahoo Finance adjusted close data.',
     `Using ${tradingDays.length} aligned trading days across ${portfolio.length} holdings and benchmark ${benchmark}.`,
@@ -670,11 +653,7 @@ export function buildBacktestResponseFromStoredRows(input: BacktestRequest, rows
     input.rebalanceMode === 'none'
       ? 'Portfolio runs as a buy-and-hold allocation after the initial weights are set.'
       : `Portfolio rebalances to target weights on a ${input.rebalanceMode} schedule.`,
-    benchmarkStatus === 'full'
-      ? `${benchmark} has full benchmark coverage over the effective backtest window.`
-      : benchmarkStatus === 'partial'
-        ? `${benchmark} has partial benchmark coverage over the effective backtest window.`
-        : `No stored benchmark history was available for ${benchmark} over the effective backtest window.`,
+    `${benchmark} is required and has full benchmark coverage over the effective backtest window.`,
   ];
 
   return {
@@ -701,7 +680,7 @@ export function buildBacktestResponseFromStoredRows(input: BacktestRequest, rows
       requestedEndDate: input.endDate,
       tradingDays: tradingDays.length,
       benchmarkTradingDays,
-      benchmarkStatus,
+      benchmarkStatus: 'full',
       missingSymbols,
     },
     notes,
@@ -709,7 +688,7 @@ export function buildBacktestResponseFromStoredRows(input: BacktestRequest, rows
 }
 
 export async function buildBacktestResponseFromMarketData(input: BacktestRequest): Promise<BacktestResponse | null> {
-  const portfolio = getNormalizedPortfolio(input.allocations);
+  const portfolio = parseValidatedAllocationString(input.allocations);
 
   if (portfolio.length === 0) {
     return null;
